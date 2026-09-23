@@ -1,0 +1,11 @@
+# .coderabbit.yaml
+reviews:
+  profile: chill # ou "assertive" pour des reviews plus strictes
+  request_changes_workflow: true # bloque le merge tant que les commentaires ne sont pas résolus
+  auto_review:
+    enabled: true
+    base_branches:
+      - "main"
+  path_instructions:
+    - path: "server/src/**"
+      instructions: "Vérifie la présence de validation Zod sur chaque route, la gestion des erreurs via asyncHandler, et l'absence de logique métier directement dans les controllers."
