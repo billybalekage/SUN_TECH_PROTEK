@@ -1,10 +1,12 @@
 /**
- * Calcule le courant d'emploi Ib.
- * @param {number} power - Puissance P en watts
- * @param {number} voltage - Tension U en volts
- * @param {number} cosPhi - Facteur de puissance (0 à 1)
- * @param {"1N"|"3N"} phaseType - Type de phase
- * @returns {number} Ib en ampères
+ * Calculates operating current from power, voltage, and power factor.
+ * @param {number} power - Power in watts; must be greater than zero.
+ * @param {number} voltage - Voltage in volts; must be greater than zero.
+ * @param {number} cosPhi - Power factor from 0 to 1, inclusive.
+ * @param {"1N"|"3N"} phaseType - "1N" for single-phase or "3N" for three-phase.
+ * @returns {number|undefined} Current in amperes, or undefined for other phase types.
+ *   A zero power factor produces an infinite result for finite positive power and voltage.
+ * @throws {Error} If power or voltage is non-positive, or cosPhi is outside 0 to 1.
  */
 
 function calculateIb(power, voltage, cosPhi, phaseType) {
