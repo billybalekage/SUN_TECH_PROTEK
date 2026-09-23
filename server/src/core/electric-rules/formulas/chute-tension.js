@@ -1,13 +1,15 @@
 /**
- * Calcule le courant d'emploi Ib.
- * @param {number} resistivity - Résistivité en ohm-mètres
- * @param {number} length - Longueur du conducteur en mètres
- * @param {number} voltage - Tension nominale U en volts
- * @param {number} section - Section du conducteur en mm²
- * @param {number} Ib - Courant d'emploi en ampères
- * @param {number} cosPhi - Facteur de puissance (0 à 1)
- * @param {"1N"|"3N"} phaseType - Type de phase
- * @returns {number} chute de tension en volts
+ * Validate voltage and power factor for a voltage-drop calculation.
+ * No drop is calculated yet; all other inputs are ignored.
+ * @param {number} resistivity - Unused conductor resistivity.
+ * @param {number} length - Unused conductor length.
+ * @param {number} voltage - Nominal voltage in volts; must be greater than zero.
+ * @param {number} section - Unused conductor cross-sectional area.
+ * @param {number} Ib - Unused operating current.
+ * @param {number} cosPhi - Power factor from 0 to 1, inclusive.
+ * @param {"1N"|"3N"} phaseType - Phase type; neither branch calculates a drop yet.
+ * @returns {undefined} No voltage drop is returned for any phase type.
+ * @throws {Error} If voltage is at most zero or cosPhi is outside 0 to 1.
  */
 
 function calculateChuteTension(
@@ -33,6 +35,10 @@ function calculateChuteTension(
   }
 }
 
+/**
+ * Placeholder for percentage voltage drop; ignores all inputs and returns undefined.
+ * @returns {undefined} No percentage is calculated.
+ */
 function calculateChuteTensionPercent(
   resistivity,
   length,
