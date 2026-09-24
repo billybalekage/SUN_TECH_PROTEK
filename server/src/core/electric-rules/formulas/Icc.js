@@ -1,28 +1,28 @@
 // Coefficient de la méthode conventionnelle (UTE C15-105)
 const CONVENTIONAL_COEFFICIENT = 0.8;
 
+/**
+ * Rejects zero or negative inputs, naming the rejected quantity in the error.
+ * @throws {Error} If value is zero or negative.
+ */
 function validatePositive(value, label) {
   if (value <= 0) throw new Error(`${label} doit être positif`);
 }
 
 /**
- * Calcule le courant de court-circuit minimal (Icc min) en bout de
- * canalisation, via la méthode conventionnelle (UTE C15-105).
- *
- * Sert à vérifier que la protection déclenchera dans le temps requis
- * en cas de défaut en bout de ligne. Ne remplace PAS le calcul du
- * courant de court-circuit maximal (Icc max, à l'origine de
- * l'installation), qui sert à vérifier le pouvoir de coupure et
- * nécessite la puissance de court-circuit du réseau amont.
+ * Calculates minimum short-circuit current at the end of a conductor using
+ * the conventional UTE C15-105 method, not maximum short-circuit current.
  *
  * @param {object} params
- * @param {number} params.voltage - Tension U en V (phase-neutre en mono, composée en triphasé)
- * @param {number} params.section - Section du conducteur de phase S en mm²
- * @param {number} params.length - Longueur du câble L en m
- * @param {number} params.rho - Résistivité du conducteur (Ω·mm²/m)
- * @param {number} [params.m=1] - Rapport Sph/Sn (section phase / section neutre)
- * @param {"1N"|"3N"} params.phaseType - Type de phase
- * @returns {number} Icc min en ampères
+ * @param {number} params.voltage - Voltage in V (phase-to-neutral for "1N", line-to-line for "3N").
+ * @param {number} params.section - Phase conductor cross-sectional area in mm².
+ * @param {number} params.length - Cable length in m.
+ * @param {number} params.rho - Conductor resistivity in Ω·mm²/m.
+ * @param {number} [params.m=1] - Phase-to-neutral conductor area ratio; affects only "1N".
+ * @param {"1N"|"3N"} params.phaseType - Single-phase or three-phase circuit.
+ * @returns {number} Minimum short-circuit current in amperes.
+ * @throws {Error} If voltage, section, length, rho, or m is zero or negative,
+ *   or phaseType is not "1N" or "3N".
  */
 function calculateIccMin({ voltage, section, length, rho, m = 1, phaseType }) {
   validatePositive(voltage, "U");

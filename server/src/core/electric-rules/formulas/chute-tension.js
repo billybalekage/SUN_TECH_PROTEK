@@ -17,15 +17,17 @@ function validateCommonParams({ rho, length, ib, cosPhi, voltage, phaseType }) {
 }
 
 /**
- * Calcule le courant d'emploi Ib.
- * @param {number} resistivity - Résistivité en ohm-mètres
- * @param {number} length - Longueur du conducteur en mètres
- * @param {number} voltage - Tension nominale U en volts
- * @param {number} section - Section du conducteur en mm²
- * @param {number} Ib - Courant d'emploi en ampères
- * @param {number} cosPhi - Facteur de puissance (0 à 1)
- * @param {"1N"|"3N"} phaseType - Type de phase
- * @returns {number} chute de tension en volts
+ * Intended to calculate single-phase voltage drop as a percentage of supply
+ * voltage; the three-phase branch has no result. This module currently fails
+ * to parse, so the function cannot be called.
+ * @param {object} params
+ * @param {number} params.rho - Conductor resistivity in Ω·mm²/m.
+ * @param {number} params.length - Cable length in m.
+ * @param {number} params.ib - Operating current in amperes.
+ * @param {number} params.cosPhi - Power factor; unused in the single-phase expression.
+ * @param {number} params.section - Conductor cross-sectional area in mm².
+ * @param {number} params.voltage - Supply voltage in V.
+ * @param {"1N"|"3N"} params.phaseType - Single-phase or three-phase circuit.
  */
 function calculateDeltaUPercent({
   rho,
@@ -47,8 +49,8 @@ function calculateDeltaUPercent({
   );
 }
 
-function calculateMinSectionByVoltageDrop({
-  rho = RESISTIVITY,
+function calculateChuteTensionPercent(
+  resistivity,
   length,
   ib,
   cosPhi,
@@ -73,11 +75,11 @@ function calculateMinSectionByVoltageDrop({
 }
 
 /**
- * Arrondit une section brute à la section normalisée immédiatement supérieure.
+ * Intended to select the smallest standard area at least as large as the
+ * requested area. This module cannot currently be parsed, and its
+ * standard-section list is undefined.
  *
- * @param {number} value - Section brute calculée (mm²)
- * @returns {number|null} Section normalisée (mm²), ou null si aucune section
- *   du catalogue standard n'est suffisante.
+ * @param {number} value - Conductor cross-sectional area in mm²; must be positive.
  */
 function roundToStandardSection(value) {
   if (value <= 0) throw new Error("La section à arrondir doit être positive");
