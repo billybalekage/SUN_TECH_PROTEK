@@ -1,28 +1,29 @@
 const express = require("express");
-const { validate } = require("../../common/middlewares/validator");
-const circuitsController = require("./circuit.controller");
+const router = express.Router();
+
+const circuitController = require("../controller/circuit.controller");
+const { validate } = require("../../../common/middlewares/validate.middleware");
 const {
   createCircuitSchema,
   updateCircuitSchema,
-} = require("./circuit.validator");
+  runCalculationSchema,
+} = require("../validator/circuit.validator");
+const verifyToken = require("../../../common/middlewares/auth.middleware");
 
-const router = express.Router();
+router.use(verifyToken); // toutes les routes circuits nécessitent une authentification
 
-router.post(
-  "/circuits",
-  validate(createCircuitSchema),
-  circuitsController.create,
-);
-router.get("/circuits/:id", circuitsController.getById);
+router.post("/", validate(createCircuitSchema), circuitController.create);
 router.get(
-  "/installations/:installationId/circuits",
-  circuitsController.listByInstallation,
+  "/installation/:installationId",
+  circuitController.listByInstallation,
 );
-router.patch(
-  "/circuits/:id",
-  validate(updateCircuitSchema),
-  circuitsController.update,
+router.get("/:id", circuitController.getById);
+router.patch("/:id", validate(updateCircuitSchema), circuitController.update);
+router.delete("/:id", circuitController.remove);
+router.post(
+  "/:id/calculate",
+  validate(runCalculationSchema),
+  circuitController.runCalculation,
 );
-router.delete("/circuits/:id", circuitsController.remove);
 
 module.exports = router;

@@ -14,6 +14,8 @@ const { globalSlowDown } = require("../common/middlewares/reteLimiter");
 const notFound = require("../common/middlewares/notFound");
 const errorHandler = require("../common/errors/errorHandler");
 
+const circuitRoutes = require("./features/circuits/routes/circuit.routes");
+
 const createApp = () => {
   const app = express();
   app.use(express.json());
@@ -129,6 +131,8 @@ const createApp = () => {
       timestamp: new Date().toISOString(),
     });
   });
+
+  app.use("/api/circuits", circuitRoutes);
 
   return app;
 };

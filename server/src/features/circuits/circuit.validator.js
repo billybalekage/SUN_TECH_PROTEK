@@ -51,4 +51,26 @@ const updateCircuitSchema = createCircuitSchema
     "object.min": "Au moins un champ doit être fourni pour la mise à jour",
   });
 
+const runCalculationSchema = Joi.object({
+  inCurrent: Joi.number().positive().required().messages({
+    "any.required": "Le calibre de la protection (inCurrent) est requis",
+  }),
+  izCurrent: Joi.number().positive().required().messages({
+    "any.required": "L'intensité admissible retenue (izCurrent) est requise",
+  }),
+  sectionByAmpacity: Joi.number().positive().optional(),
+  maxDeltaUPercent: Joi.number().positive().default(5),
+  rho: Joi.number().positive().optional(),
+  k1: Joi.number().positive().default(1),
+  k2: Joi.number().positive().default(1),
+  k3: Joi.number().positive().default(1),
+  m: Joi.number().positive().default(1),
+});
+
+module.exports = {
+  createCircuitSchema,
+  updateCircuitSchema,
+  runCalculationSchema,
+};
+
 module.exports = { createCircuitSchema, updateCircuitSchema };
