@@ -1,4 +1,4 @@
-const { calculateIb } = require("./formulas/Ib");
+const { CONVENTIONAL_COEFFICIENT, calculateIccMin } = require("./formulas/Icc");
 const {
   RESISTIVITY,
   STANDARD_SECTIONS,
@@ -6,7 +6,7 @@ const {
   calculateMinSectionByVoltageDrop,
   roundToStandardSection,
 } = require("./formulas/chute-tension");
-const { CONVENTIONAL_COEFFICIENT, calculateIccMin } = require("./formulas/Icc");
+const { calculateIb } = require("./formulas/Ib");
 const { checkCoordination } = require("./rules/coordination");
 
 module.exports = {
