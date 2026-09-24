@@ -1,22 +1,35 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { calculateIb } from "../electric-rules/formulas/Ib.js";
 
 describe("calculateIb", () => {
-  it("calcule Ib correctement en monophasé", () => {
-    // P=2000W, U=230V, cosPhi=1 → Ib = 2000/230 ≈ 8.70A
-    expect(calculateIb(2000, 230, 1, "1N")).toBeCloseTo(8.7, 1);
+  it("calculates single-phase operating current", () => {
+    expect(calculateIb(2000, 230, 1, "1N")).toBeCloseTo(2000 / 230);
+    expect(calculateIb(2000, 230, 0.8, "1N")).toBeCloseTo(2000 / (230 * 0.8));
   });
 
-  it("calcule Ib correctement en triphasé", () => {
-    // P=6000W, U=400V, cosPhi=0.8 → Ib = 6000/(√3×400×0.8) ≈ 10.83A
-    expect(calculateIb(6000, 400, 0.8, "3N")).toBeCloseTo(10.83, 1);
+  it("accounts for the square-root-of-three factor in three-phase current", () => {
+    expect(calculateIb(6000, 400, 0.8, "3N")).toBeCloseTo(
+      6000 / (Math.sqrt(3) * 400 * 0.8),
+    );
   });
 
-  it("rejette une puissance négative", () => {
-    expect(() => calculateIb(-100, 230, 1, "1N")).toThrow();
+  it.each([
+    ["power", 0, 230, 1, "La puissance"],
+    ["power", -1, 230, 1, "La puissance"],
+    ["voltage", 2000, 0, 1, "La tension"],
+    ["voltage", 2000, -230, 1, "La tension"],
+    ["power factor", 2000, 230, -0.1, "Le facteur de puissance"],
+    ["power factor", 2000, 230, 1.1, "Le facteur de puissance"],
+  ])("rejects invalid %s inputs", (_, power, voltage, cosPhi, message) => {
+    expect(() => calculateIb(power, voltage, cosPhi, "1N")).toThrow(message);
   });
 
-  it("rejette un cosPhi invalide", () => {
-    expect(() => calculateIb(2000, 230, 1.5, "1N")).toThrow();
+  it("accepts the documented power-factor endpoints", () => {
+    expect(calculateIb(100, 230, 0, "1N")).toBe(Infinity);
+    expect(calculateIb(100, 230, 1, "1N")).toBeCloseTo(100 / 230);
+  });
+
+  it("returns undefined for an unsupported phase type", () => {
+    expect(calculateIb(100, 230, 1, "2N")).toBeUndefined();
   });
 });
