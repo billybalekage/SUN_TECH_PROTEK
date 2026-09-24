@@ -57,7 +57,7 @@ function calculateChuteTensionPercent(
   voltage,
   maxDeltaUPercent,
   phaseType,
-}) {
+) {
   validateCommonParams({ rho, length, ib, cosPhi, voltage, phaseType });
   if (maxDeltaUPercent <= 0) {
     throw new Error("Le seuil de chute de tension maximal doit être positif");
