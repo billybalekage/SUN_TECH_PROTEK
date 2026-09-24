@@ -42,15 +42,15 @@ function calculateDeltaUPercent({
   if (section <= 0) throw new Error("La section (S) doit être positive");
 
   if (phaseType === "1N") {
-    return (2 * rho * length * ib * cosPhi * 100) / (section * voltage);
+    return (2 * rho * length * ib * 100) / (section * voltage);
   }
   return (
     (Math.sqrt(3) * rho * length * ib * cosPhi * 100) / (section * voltage)
   );
 }
 
-function calculateChuteTensionPercent(
-  resistivity,
+function calculateMinSectionByVoltageDrop(
+  rho,
   length,
   ib,
   cosPhi,
@@ -64,10 +64,9 @@ function calculateChuteTensionPercent(
   }
 
   if (phaseType === "1N") {
-    return (
-      (2 * rho * length * ib * cosPhi * 100) / (maxDeltaUPercent * voltage)
-    );
+    return (2 * rho * length * ib * 100) / (maxDeltaUPercent * voltage);
   }
+
   return (
     (Math.sqrt(3) * rho * length * ib * cosPhi * 100) /
     (maxDeltaUPercent * voltage)
