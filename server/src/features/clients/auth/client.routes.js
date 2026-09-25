@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authController = require("./client.controller");
+const verifyToken = require("../../../common/middlewares/auth");
 const { validate } = require("../../../common/middlewares/validator");
 const { authLimiter } = require("../../../common/middlewares/reteLimiter");
 const {
@@ -13,6 +14,7 @@ const {
 
 const client = express.Router();
 
+client.get("/auth/me", verifyToken, authController.getCurrentUser);
 client.post(
   "/auth/logout",
   validate(emptyRequestSchema),

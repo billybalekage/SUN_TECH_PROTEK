@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/toast";
 import { signup } from "../api/auth";
+import { authMeQueryKey } from "./useAuthSession";
 
 export function useSignup() {
   const navigate = useNavigate();
@@ -10,9 +11,9 @@ export function useSignup() {
   return useMutation({
     mutationFn: signup,
     onSuccess: (data) => {
-      queryClient.setQueryData(["auth", "me"], data.user);
+      queryClient.setQueryData(authMeQueryKey, data.user);
       toast.add({ title: "Compte créé avec succès", type: "success" });
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     },
   });
 }

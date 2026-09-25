@@ -28,6 +28,10 @@ function hashRefreshToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+function hashOtpCode(code) {
+  return crypto.createHash("sha256").update(String(code).trim()).digest("hex");
+}
+
 function buildRefreshToken(user, familyId = crypto.randomUUID()) {
   const jti = crypto.randomUUID();
   const token = jwt.sign(
@@ -126,7 +130,11 @@ async function requestOtp({ email }) {
   );
 
   await authRepository.invalidateUserOtps(user.id);
-  await authRepository.createOtpCode({ userId: user.id, code, expiresAt });
+  await authRepository.createOtpCode({
+    userId: user.id,
+    code: hashOtpCode(code),
+    expiresAt,
+  });
   await sendOtpEmail(user.email, code);
 
   return genericResponse;
@@ -149,6 +157,15 @@ async function verifyOtp({ email, code }) {
     refreshToken: await issueRefreshToken(user),
     user: sanitize(user),
   };
+}
+
+async function getCurrentUser(userId) {
+  const user = await authRepository.findUserById(userId);
+  if (!user || !user.isActive) {
+    return null;
+  }
+
+  return sanitize(user);
 }
 
 async function refreshSession(refreshToken) {
@@ -223,6 +240,7 @@ module.exports = {
   loginWithPassword,
   requestOtp,
   verifyOtp,
+  getCurrentUser,
   refreshSession,
   logout,
 };

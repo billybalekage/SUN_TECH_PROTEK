@@ -1,4 +1,19 @@
+const crypto = require("crypto");
 const prisma = require("../../../config/database");
+
+function hashOtpCode(code) {
+  return crypto.createHash("sha256").update(String(code).trim()).digest("hex");
+}
+
+function normalizeOtpCode(code) {
+  const value = String(code).trim();
+
+  if (/^[a-f0-9]{64}$/i.test(value)) {
+    return value;
+  }
+
+  return hashOtpCode(value);
+}
 
 async function findUserByEmail(email) {
   return prisma.user.findUnique({ where: { email }, include: { role: true } });
@@ -27,12 +42,22 @@ async function createUser({
 }
 
 async function createOtpCode({ userId, code, expiresAt }) {
-  return prisma.otpCode.create({ data: { userId, code, expiresAt } });
+  return prisma.otpCode.create({
+    data: { userId, code: normalizeOtpCode(code), expiresAt },
+  });
 }
 
 async function findValidOtp(userId, code) {
+  const normalizedCode = normalizeOtpCode(code);
+  const plainCode = String(code).trim();
+
   return prisma.otpCode.findFirst({
-    where: { userId, code, used: false, expiresAt: { gt: new Date() } },
+    where: {
+      userId,
+      used: false,
+      expiresAt: { gt: new Date() },
+      OR: [{ code: normalizedCode }, { code: plainCode }],
+    },
     orderBy: { createdAt: "desc" },
   });
 }

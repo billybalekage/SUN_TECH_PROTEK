@@ -69,15 +69,6 @@ const LoginForm = () => {
           {...register("password")}
         />
 
-        <div className="flex justify-end -mt-2">
-          <Link
-            to="/forgot-password"
-            className="inline-flex min-h-8 items-center text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            Mot de passe oublié ?
-          </Link>
-        </div>
-
         <Button
           type="submit"
           disabled={login.isPending}
