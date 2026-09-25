@@ -9,7 +9,6 @@ const { ConflictError } = require("../../../common/errors/AppErrors");
 const {
   BadRequestError,
   UnauthorizedError,
-  NotFoundError,
 } = require("../../../common/errors/AppErrors");
 
 function issueToken(user) {
@@ -23,6 +22,12 @@ function issueToken(user) {
     env.jwt.accessSecret,
     { expiresIn: `${env.jwt.accessExpiresInMinutes}m` },
   );
+}
+
+function issueRefreshToken(user) {
+  return jwt.sign({ id: user.id }, env.jwt.refreshSecret, {
+    expiresIn: `${env.jwt.refreshExpiresInDays}d`,
+  });
 }
 
 function sanitize(user) {
@@ -50,7 +55,11 @@ async function signup({ fullName, email, password, company, phone }) {
     phone,
     roleId: role.id,
   });
-  return { token: issueToken(user), user: sanitize(user) };
+  return {
+    token: issueToken(user),
+    refreshToken: issueRefreshToken(user),
+    user: sanitize(user),
+  };
 }
 
 async function loginWithPassword({ email, password }) {
@@ -64,7 +73,11 @@ async function loginWithPassword({ email, password }) {
     throw new UnauthorizedError("Email ou mot de passe incorrect");
   }
 
-  return { token: issueToken(user), user: sanitize(user) };
+  return {
+    token: issueToken(user),
+    refreshToken: issueRefreshToken(user),
+    user: sanitize(user),
+  };
 }
 
 async function requestOtp({ email }) {
@@ -85,9 +98,7 @@ async function requestOtp({ email }) {
 
   await authRepository.invalidateUserOtps(user.id);
   await authRepository.createOtpCode({ userId: user.id, code, expiresAt });
-  sendOtpEmail(user.email, code).catch((error) => {
-    console.error("Failed to send OTP email", error);
-  });
+  await sendOtpEmail(user.email, code);
 
   return genericResponse;
 }
@@ -104,7 +115,45 @@ async function verifyOtp({ email, code }) {
   }
 
   await authRepository.markOtpUsed(otp.id);
-  return { token: issueToken(user), user: sanitize(user) };
+  return {
+    token: issueToken(user),
+    refreshToken: issueRefreshToken(user),
+    user: sanitize(user),
+  };
 }
 
-module.exports = { signup, loginWithPassword, requestOtp, verifyOtp };
+async function refreshSession(refreshToken) {
+  if (!refreshToken) {
+    throw new UnauthorizedError("Refresh token manquant");
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(refreshToken, env.jwt.refreshSecret);
+  } catch {
+    throw new UnauthorizedError("Refresh token invalide ou expiré");
+  }
+
+  if (!payload || typeof payload !== "object" || !payload.id) {
+    throw new UnauthorizedError("Refresh token invalide ou expiré");
+  }
+
+  const user = await authRepository.findUserById(payload.id);
+  if (!user || !user.isActive) {
+    throw new UnauthorizedError("Session invalide");
+  }
+
+  return {
+    token: issueToken(user),
+    refreshToken: issueRefreshToken(user),
+    user: sanitize(user),
+  };
+}
+
+module.exports = {
+  signup,
+  loginWithPassword,
+  requestOtp,
+  verifyOtp,
+  refreshSession,
+};

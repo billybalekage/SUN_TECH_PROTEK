@@ -1,5 +1,15 @@
+import Header from "./components/layout/header";
+import { Theme, ThemeProvider } from "./components/layout/theme";
+import Router from "./app/route";
+
 const App = () => {
-  return <div>App</div>;
+  return (
+    <ThemeProvider>
+      <Theme>
+        <Router />
+      </Theme>
+    </ThemeProvider>
+  );
 };
 
 export default App;
