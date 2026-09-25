@@ -25,7 +25,7 @@ const verifyOtpSchema = Joi.object({
   code: Joi.string().length(6).required(),
 });
 
-const emptyRequestSchema = z.object({}).strict();
+const emptyRequestSchema = z.object({}).strict().optional();
 
 module.exports = {
   signupSchema,
