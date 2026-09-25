@@ -6,9 +6,11 @@ const authRepository = require("./auth.repository");
 const { sendOtpEmail } = require("../../../common/utils/mailer");
 const env = require("../../../config/env");
 const { ConflictError } = require("../../../common/errors/AppErrors");
-const { BadRequestError, UnauthorizedError, NotFoundError } = requrie(
-  "../../../common/errors/AppErrors",
-);
+const {
+  BadRequestError,
+  UnauthorizedError,
+  NotFoundError,
+} = require("../../../common/errors/AppErrors");
 
 function issueToken(user) {
   return jwt.sign(
@@ -42,8 +44,8 @@ async function signup({ fullName, email, password, company, phone }) {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await authRepository.createUser({
     fullName,
-    enail,
-    password,
+    email,
+    passwordHash,
     company,
     phone,
     roleId: role.id,
@@ -66,9 +68,14 @@ async function loginWithPassword({ email, password }) {
 }
 
 async function requestOtp({ email }) {
+  const genericResponse = {
+    message:
+      "Si un compte correspond à cette adresse e-mail, un code a été envoyé.",
+  };
+
   const user = await authRepository.findUserByEmail(email);
   if (!user) {
-    throw new NotFoundError("Aucun compte associé a cet email");
+    return genericResponse;
   }
 
   const code = crypto.randomInt(100000, 999999).toString();
@@ -76,21 +83,24 @@ async function requestOtp({ email }) {
     Date.now() + env.OTP_EXPIRATION_MINUTES * 60 * 1000,
   );
 
+  await authRepository.invalidateUserOtps(user.id);
   await authRepository.createOtpCode({ userId: user.id, code, expiresAt });
-  await sendOtpEmail(user.email, code);
+  sendOtpEmail(user.email, code).catch((error) => {
+    console.error("Failed to send OTP email", error);
+  });
 
-  return { message: "Code envoyé à l'adress email" };
+  return genericResponse;
 }
 
 async function verifyOtp({ email, code }) {
   const user = await authRepository.findUserByEmail(email);
   if (!user) {
-    throw new NotFoundError("Aucun compte associé a cet email");
+    throw new UnauthorizedError("Code invalide");
   }
 
   const otp = await authRepository.findValidOtp(user.id, code);
   if (!otp) {
-    throw UnauthorizedError("Code invalide");
+    throw new UnauthorizedError("Code invalide");
   }
 
   await authRepository.markOtpUsed(otp.id);

@@ -1,5 +1,8 @@
 const Joi = require("joi");
 
+const idParamSchema = Joi.string().uuid().required();
+const installationIdParamSchema = Joi.string().uuid().required();
+
 const createCircuitSchema = Joi.object({
   installationId: Joi.string().uuid().required().messages({
     "string.uuid": "L'identifiant de l'installation doit être un UUID valide",
@@ -68,9 +71,9 @@ const runCalculationSchema = Joi.object({
 });
 
 module.exports = {
+  idParamSchema,
+  installationIdParamSchema,
   createCircuitSchema,
   updateCircuitSchema,
   runCalculationSchema,
 };
-
-module.exports = { createCircuitSchema, updateCircuitSchema };

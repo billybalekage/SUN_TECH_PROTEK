@@ -1,4 +1,4 @@
-const circuitRepository = require("../repository/circuit.repository");
+const circuitRepository = require("./circuit.repository");
 const {
   NotFoundError,
   BadRequestError,
@@ -14,7 +14,49 @@ const {
   checkCoordination,
 } = require("../../../core/electric-rules");
 
-async function runCircuitCalculation(circuitId, options = {}) {
+async function createCircuit(userId, data) {
+  const installation = await circuitRepository.findInstallationById(
+    data.installationId,
+  );
+  if (!installation || installation.project.ownerId !== userId) {
+    throw new NotFoundError(
+      `Installation introuvable : ${data.installationId}`,
+    );
+  }
+
+  return circuitRepository.createCircuit(data);
+}
+
+async function getCircuit(userId, circuitId) {
+  const circuit = await circuitRepository.findCircuitById(circuitId);
+  if (!circuit || circuit.installation?.project?.ownerId !== userId) {
+    throw new NotFoundError(`Circuit introuvable : ${circuitId}`);
+  }
+
+  return circuit;
+}
+
+async function listCircuitsByInstallation(userId, installationId) {
+  const installation =
+    await circuitRepository.findInstallationById(installationId);
+  if (!installation || installation.project.ownerId !== userId) {
+    throw new NotFoundError(`Installation introuvable : ${installationId}`);
+  }
+
+  return circuitRepository.findCircuitsByInstallation(installationId);
+}
+
+async function updateCircuit(userId, circuitId, data) {
+  await getCircuit(userId, circuitId);
+  return circuitRepository.updateCircuit(circuitId, data);
+}
+
+async function deleteCircuit(userId, circuitId) {
+  await getCircuit(userId, circuitId);
+  return circuitRepository.deleteCircuit(circuitId);
+}
+
+async function runCircuitCalculation(userId, circuitId, options = {}) {
   const {
     inCurrent,
     izCurrent,
@@ -27,10 +69,7 @@ async function runCircuitCalculation(circuitId, options = {}) {
     m = 1,
   } = options;
 
-  const circuit = await circuitRepository.findCircuitById(circuitId);
-  if (!circuit) {
-    throw new NotFoundError(`Circuit introuvable : ${circuitId}`);
-  }
+  const circuit = await getCircuit(userId, circuitId);
 
   const installation = circuit.installation;
   if (!installation) {
@@ -113,4 +152,11 @@ async function runCircuitCalculation(circuitId, options = {}) {
   return { ...result, reasons: coordination.reasons };
 }
 
-module.exports = { runCircuitCalculation };
+module.exports = {
+  createCircuit,
+  getCircuit,
+  listCircuitsByInstallation,
+  updateCircuit,
+  deleteCircuit,
+  runCircuitCalculation,
+};

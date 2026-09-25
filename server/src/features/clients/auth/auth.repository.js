@@ -37,6 +37,13 @@ async function markOtpUsed(otpId) {
   return prisma.otpCode.update({ where: { id: otpId }, data: { used: true } });
 }
 
+async function invalidateUserOtps(userId) {
+  return prisma.otpCode.updateMany({
+    where: { userId, used: false },
+    data: { used: true },
+  });
+}
+
 module.exports = {
   findRoleByName,
   findUserByEmail,
@@ -44,4 +51,5 @@ module.exports = {
   createOtpCode,
   findValidOtp,
   markOtpUsed,
+  invalidateUserOtps,
 };
