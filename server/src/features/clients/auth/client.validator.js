@@ -1,4 +1,7 @@
 const Joi = require("joi");
+const { z } = require("zod");
+
+const emptyRequestSchema = z.object({}).strict();
 
 const signupSchema = Joi.object({
   fullName: Joi.string().trim().min(2).max(150).required(),
@@ -25,6 +28,7 @@ const verifyOtpSchema = Joi.object({
 });
 
 module.exports = {
+  emptyRequestSchema,
   signupSchema,
   loginPasswordSchema,
   requestOtpSchema,

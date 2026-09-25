@@ -2,7 +2,7 @@ const express = require("express");
 const circuit = express.Router();
 
 const circuitController = require("./circuit.controller");
-const { validate } = require("../../common/middlewares/validator");
+const { validateZod } = require("../../common/middlewares/zodValidator");
 const {
   createCircuitSchema,
   updateCircuitSchema,
@@ -16,32 +16,32 @@ const { requireRole } = require("../../common/middlewares/roles");
 circuit.use(verifyToken);
 circuit.use(requireRole("ELECTRICIEN"));
 
-circuit.post("/", validate(createCircuitSchema), circuitController.create);
+circuit.post("/", validateZod(createCircuitSchema), circuitController.create);
 circuit.get(
   "/installation/:installationId",
-  validate(installationIdParamSchema, "params"),
+  validateZod(installationIdParamSchema, "params"),
   circuitController.listByInstallation,
 );
 circuit.get(
   "/:id",
-  validate(idParamSchema, "params"),
+  validateZod(idParamSchema, "params"),
   circuitController.getById,
 );
 circuit.patch(
   "/:id",
-  validate(idParamSchema, "params"),
-  validate(updateCircuitSchema),
+  validateZod(idParamSchema, "params"),
+  validateZod(updateCircuitSchema),
   circuitController.update,
 );
 circuit.delete(
   "/:id",
-  validate(idParamSchema, "params"),
+  validateZod(idParamSchema, "params"),
   circuitController.remove,
 );
 circuit.post(
   "/:id/calculate",
-  validate(idParamSchema, "params"),
-  validate(runCalculationSchema),
+  validateZod(idParamSchema, "params"),
+  validateZod(runCalculationSchema),
   circuitController.runCalculation,
 );
 
