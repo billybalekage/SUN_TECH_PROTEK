@@ -20,8 +20,6 @@ const projectRoutes = require("../features/projects/routes/project.route");
 
 const createApp = () => {
   const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
 
   const swaggerOptions = {
     definition: {
@@ -91,7 +89,12 @@ const createApp = () => {
 
   app.use(globalSlowDown);
   app.use(compression({ threshold: 1024 }));
-  app.use(express.json({ limit: env.REQUEST_SIZE_LIMIT || "1mb" }));
+  app.use(
+    express.json({
+      limit: env.REQUEST_SIZE_LIMIT || "1mb",
+    }),
+  );
+  app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
   if (env.NODE_ENV !== "production") {

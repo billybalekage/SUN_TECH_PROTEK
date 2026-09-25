@@ -12,8 +12,10 @@ export function loginWithPassword({ email, password }) {
     .then((res) => res.data);
 }
 
-export function logout() {
-  return api.post("clients/auth/logout").then((res) => res.data.data);
+export function getCurrentUser() {
+  return api.get("clients/auth/me").then((res) => res.data.user);
 }
 
-//fonction pour login avec code otp
+export function logout() {
+  return api.post("clients/auth/logout").then(() => undefined);
+}

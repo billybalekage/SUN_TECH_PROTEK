@@ -1,5 +1,6 @@
 const authService = require("./client.service");
 const { asyncHandler } = require("../../../common/utils/asyncHandler");
+const { UnauthorizedError } = require("../../../common/errors/AppErrors");
 const {
   accessCookieOptions,
   refreshCookieOptions,
@@ -44,6 +45,15 @@ const verifyOtp = asyncHandler(async (req, res) => {
     await authService.verifyOtp(req.body),
   );
 });
+const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await authService.getCurrentUser(req.user.id);
+
+  if (!user) {
+    throw new UnauthorizedError("Utilisateur non authentifié");
+  }
+
+  return res.status(200).json({ user });
+});
 const refresh = asyncHandler(async (req, res) => {
   return sendAuthenticatedResponse(
     res,
@@ -66,6 +76,7 @@ module.exports = {
   loginWithPassword,
   requestOtp,
   verifyOtp,
+  getCurrentUser,
   refresh,
   logout,
 };

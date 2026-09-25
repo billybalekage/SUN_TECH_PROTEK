@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/toast";
 import { loginWithPassword } from "../api/auth";
+import { authMeQueryKey } from "./useAuthSession";
 
 export function useLogin() {
   const navigate = useNavigate();
@@ -10,9 +11,9 @@ export function useLogin() {
   return useMutation({
     mutationFn: loginWithPassword,
     onSuccess: (data) => {
-      queryClient.setQueryData(["auth", "me"], data.user);
+      queryClient.setQueryData(authMeQueryKey, data.user);
       toast.add({ title: "Connexion réussie", type: "success" });
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     },
   });
 }
