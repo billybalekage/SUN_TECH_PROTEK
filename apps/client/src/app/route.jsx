@@ -3,6 +3,7 @@ import NotFoundPage from "./page/Notfound";
 import LoginPage from "../features/auth/pages/LoginPages";
 import SignupPage from "../features/auth/pages/SignupPage";
 import VerifyOtpPage from "../features/auth/pages/VerifyOtpPage";
+import DashboardPage from "./page/Dashboard";
 
 const Router = () => {
   return (
@@ -11,6 +12,7 @@ const Router = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/login/otp" element={<VerifyOtpPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

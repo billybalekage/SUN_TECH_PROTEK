@@ -24,10 +24,39 @@ function issueToken(user) {
   );
 }
 
-function issueRefreshToken(user) {
-  return jwt.sign({ id: user.id }, env.jwt.refreshSecret, {
-    expiresIn: `${env.jwt.refreshExpiresInDays}d`,
-  });
+function hashRefreshToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function buildRefreshToken(user, familyId = crypto.randomUUID()) {
+  const jti = crypto.randomUUID();
+  const token = jwt.sign(
+    { id: user.id, jti, familyId },
+    env.jwt.refreshSecret,
+    {
+      expiresIn: `${env.jwt.refreshExpiresInDays}d`,
+    },
+  );
+
+  return {
+    token,
+    record: {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      tokenHash: hashRefreshToken(token),
+      jti,
+      familyId,
+      expiresAt: new Date(
+        Date.now() + env.jwt.refreshExpiresInDays * 24 * 60 * 60 * 1000,
+      ),
+    },
+  };
+}
+
+async function issueRefreshToken(user, familyId) {
+  const issued = buildRefreshToken(user, familyId);
+  await authRepository.createRefreshToken(issued.record);
+  return issued.token;
 }
 
 function sanitize(user) {
@@ -57,7 +86,7 @@ async function signup({ fullName, email, password, company, phone }) {
   });
   return {
     token: issueToken(user),
-    refreshToken: issueRefreshToken(user),
+    refreshToken: await issueRefreshToken(user),
     user: sanitize(user),
   };
 }
@@ -75,7 +104,7 @@ async function loginWithPassword({ email, password }) {
 
   return {
     token: issueToken(user),
-    refreshToken: issueRefreshToken(user),
+    refreshToken: await issueRefreshToken(user),
     user: sanitize(user),
   };
 }
@@ -117,7 +146,7 @@ async function verifyOtp({ email, code }) {
   await authRepository.markOtpUsed(otp.id);
   return {
     token: issueToken(user),
-    refreshToken: issueRefreshToken(user),
+    refreshToken: await issueRefreshToken(user),
     user: sanitize(user),
   };
 }
@@ -134,7 +163,13 @@ async function refreshSession(refreshToken) {
     throw new UnauthorizedError("Refresh token invalide ou expiré");
   }
 
-  if (!payload || typeof payload !== "object" || !payload.id) {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !payload.id ||
+    !payload.jti ||
+    !payload.familyId
+  ) {
     throw new UnauthorizedError("Refresh token invalide ou expiré");
   }
 
@@ -143,11 +178,41 @@ async function refreshSession(refreshToken) {
     throw new UnauthorizedError("Session invalide");
   }
 
+  const currentToken = await authRepository.findRefreshToken({
+    jti: payload.jti,
+    tokenHash: hashRefreshToken(refreshToken),
+  });
+  if (!currentToken || currentToken.expiresAt <= new Date()) {
+    throw new UnauthorizedError("Session invalide");
+  }
+
+  const nextToken = buildRefreshToken(user, payload.familyId);
+  const rotated = await authRepository.rotateRefreshToken({
+    currentId: currentToken.id,
+    familyId: currentToken.familyId,
+    nextToken: nextToken.record,
+  });
+  if (!rotated) {
+    throw new UnauthorizedError("Session révoquée");
+  }
+
   return {
     token: issueToken(user),
-    refreshToken: issueRefreshToken(user),
+    refreshToken: nextToken.token,
     user: sanitize(user),
   };
+}
+
+async function logout(refreshToken) {
+  if (!refreshToken) return;
+
+  const payload = jwt.decode(refreshToken);
+  if (!payload || typeof payload !== "object" || !payload.jti) return;
+
+  await authRepository.revokeRefreshToken({
+    jti: payload.jti,
+    tokenHash: hashRefreshToken(refreshToken),
+  });
 }
 
 module.exports = {
@@ -156,4 +221,5 @@ module.exports = {
   requestOtp,
   verifyOtp,
   refreshSession,
+  logout,
 };

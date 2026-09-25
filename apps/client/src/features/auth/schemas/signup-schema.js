@@ -16,8 +16,24 @@ export const signupSchema = z
       .string()
       .min(8, "Le mot de passe doit contenir au moins 8 caractères"),
     confirmPassword: z.string().min(1, "Confirmez votre mot de passe"),
-    company: z.string().trim().max(150, "Le nom de l'entreprise est trop long"),
-    phone: z.string().trim().max(30, "Le numéro de téléphone est trop long"),
+    company: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim() === "" ? undefined : value,
+      z
+        .string()
+        .trim()
+        .max(150, "Le nom de l'entreprise est trop long")
+        .optional(),
+    ),
+    phone: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim() === "" ? undefined : value,
+      z
+        .string()
+        .trim()
+        .max(30, "Le numéro de téléphone est trop long")
+        .optional(),
+    ),
   })
   .refine((values) => values.password === values.confirmPassword, {
     message: "Les mots de passe ne correspondent pas",
