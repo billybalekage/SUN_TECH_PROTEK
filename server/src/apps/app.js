@@ -16,6 +16,7 @@ const errorHandler = require("../common/errors/errorHandler");
 
 const circuitRoutes = require("../features/circuits/circuit.route");
 const clientRoutes = require("../features/clients/auth/client.routes");
+const projectRoutes = require("../features/projects/routes/project.route");
 
 const createApp = () => {
   const app = express();
@@ -131,6 +132,7 @@ const createApp = () => {
   });
   app.use("/api/v1/circuits", circuitRoutes);
   app.use("/api/v1/clients", clientRoutes);
+  app.use("/api/v1/projects", projectRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
