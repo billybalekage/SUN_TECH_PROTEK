@@ -83,6 +83,13 @@ async function revokeRefreshToken({ jti, tokenHash }) {
   });
 }
 
+async function revokeRefreshTokenFamily(familyId) {
+  return prisma.refreshToken.updateMany({
+    where: { familyId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}
+
 module.exports = {
   findRoleByName,
   findUserByEmail,
@@ -96,4 +103,5 @@ module.exports = {
   findRefreshToken,
   rotateRefreshToken,
   revokeRefreshToken,
+  revokeRefreshTokenFamily,
 };

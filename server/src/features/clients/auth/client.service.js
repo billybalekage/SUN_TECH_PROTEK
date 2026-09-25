@@ -209,10 +209,13 @@ async function logout(refreshToken) {
   const payload = jwt.decode(refreshToken);
   if (!payload || typeof payload !== "object" || !payload.jti) return;
 
-  await authRepository.revokeRefreshToken({
+  const storedToken = await authRepository.findRefreshToken({
     jti: payload.jti,
     tokenHash: hashRefreshToken(refreshToken),
   });
+  if (storedToken) {
+    await authRepository.revokeRefreshTokenFamily(storedToken.familyId);
+  }
 }
 
 module.exports = {
