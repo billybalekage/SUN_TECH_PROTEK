@@ -24,9 +24,12 @@ const verifyOtpSchema = Joi.object({
   code: Joi.string().length(6).required(),
 });
 
+const emptyRequestSchema = Joi.object({});
+
 module.exports = {
   signupSchema,
   loginPasswordSchema,
   requestOtpSchema,
   verifyOtpSchema,
+  emptyRequestSchema,
 };
