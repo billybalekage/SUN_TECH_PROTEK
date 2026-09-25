@@ -2,7 +2,7 @@ const circuitRepository = require("./circuit.repository");
 const {
   NotFoundError,
   BadRequestError,
-} = require("../../../common/errors/AppErrors");
+} = require("../../common/errors/AppErrors");
 const {
   calculateIb,
   RESISTIVITY,
@@ -12,7 +12,7 @@ const {
   selectFinalSection,
   calculateIccMin,
   checkCoordination,
-} = require("../../../core/electric-rules");
+} = require("../../core/electric-rules");
 
 async function createCircuit(userId, data) {
   const installation = await circuitRepository.findInstallationById(

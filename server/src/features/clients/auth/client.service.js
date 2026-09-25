@@ -4,7 +4,7 @@ const crypto = require("crypto");
 
 const authRepository = require("./auth.repository");
 const { sendOtpEmail } = require("../../../common/utils/mailer");
-const env = require("../../../config/env");
+const { env } = require("../../../config/env");
 const { ConflictError } = require("../../../common/errors/AppErrors");
 const {
   BadRequestError,
@@ -20,8 +20,8 @@ function issueToken(user) {
       roleId: user.roleId,
       roleName: user.role.name,
     },
-    env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN },
+    env.jwt.accessSecret,
+    { expiresIn: `${env.jwt.accessExpiresInMinutes}m` },
   );
 }
 

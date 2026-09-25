@@ -6,6 +6,7 @@ const {
   calculateMinSectionByVoltageDrop,
   roundToStandardSection,
 } = require("./formulas/chute-tension");
+const { selectFinalSection } = require("./formulas/section-selection");
 const { calculateIb } = require("./formulas/Ib");
 const { checkCoordination } = require("./rules/coordination");
 
@@ -19,6 +20,7 @@ module.exports = {
   calculateDeltaUPercent,
   calculateMinSectionByVoltageDrop,
   roundToStandardSection,
+  selectFinalSection,
 
   // Courant de court-circuit (Icc min, méthode conventionnelle)
   CONVENTIONAL_COEFFICIENT,

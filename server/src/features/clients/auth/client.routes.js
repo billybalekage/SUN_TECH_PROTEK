@@ -12,6 +12,7 @@ const {
 
 const client = express.Router();
 
+client.post("/auth/logout", authController.logout);
 client.post("/auth/signup", validate(signupSchema), authController.signup);
 client.post(
   "/auth/login",
