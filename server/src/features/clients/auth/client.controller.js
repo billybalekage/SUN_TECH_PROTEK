@@ -1,15 +1,20 @@
 const authService = require("./client.service");
 const { asyncHandler } = require("../../../common/utils/asyncHandler");
-const { cookieOptions } = require("../../../config/env");
+const {
+  accessCookieOptions,
+  refreshCookieOptions,
+} = require("../../../config/env");
 
 const ACCESS_TOKEN_COOKIE = "access_token";
+const REFRESH_TOKEN_COOKIE = "refresh_token";
 
 function sendAuthenticatedResponse(res, statusCode, authentication) {
-  const { token, user } = authentication;
+  const { token, refreshToken, user } = authentication;
 
-  res.cookie(ACCESS_TOKEN_COOKIE, token, {
-    ...cookieOptions,
-    path: "/",
+  res.cookie(ACCESS_TOKEN_COOKIE, token, { ...accessCookieOptions, path: "/" });
+  res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
+    ...refreshCookieOptions,
+    path: "/api/v1/clients/auth",
   });
 
   return res.status(statusCode).json({ user });
@@ -39,14 +44,27 @@ const verifyOtp = asyncHandler(async (req, res) => {
     await authService.verifyOtp(req.body),
   );
 });
+const refresh = asyncHandler(async (req, res) => {
+  return sendAuthenticatedResponse(
+    res,
+    200,
+    await authService.refreshSession(req.cookies?.[REFRESH_TOKEN_COOKIE]),
+  );
+});
 const logout = asyncHandler(async (_req, res) => {
-  res.clearCookie(ACCESS_TOKEN_COOKIE, {
-    httpOnly: cookieOptions.httpOnly,
-    secure: cookieOptions.secure,
-    sameSite: cookieOptions.sameSite,
-    path: "/",
+  res.clearCookie(ACCESS_TOKEN_COOKIE, { ...accessCookieOptions, path: "/" });
+  res.clearCookie(REFRESH_TOKEN_COOKIE, {
+    ...refreshCookieOptions,
+    path: "/api/v1/clients/auth",
   });
   return res.status(204).send();
 });
 
-module.exports = { signup, loginWithPassword, requestOtp, verifyOtp, logout };
+module.exports = {
+  signup,
+  loginWithPassword,
+  requestOtp,
+  verifyOtp,
+  refresh,
+  logout,
+};

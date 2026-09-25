@@ -24,6 +24,7 @@ const envSchema = Joi.object({
   DATABASE_URL: Joi.string(),
   CLIENT_URL: Joi.string().uri().default("http://localhost:5173"),
   CORS_ORIGINS: Joi.string().allow("", null).default(""),
+  OTP_EXPIRATION_MINUTES: Joi.number().integer().min(1).default(10),
 
   RATE_LIMIT_MAX_PUBLIC: Joi.number().integer().default(100),
   RATE_LIMIT_MAX_PRIVATE: Joi.number().integer().default(300),
@@ -40,6 +41,12 @@ const envSchema = Joi.object({
   COOKIE_MAX_AGE_MS: Joi.number()
     .integer()
     .default(24 * 60 * 60 * 1000),
+  COOKIE_ACCESS_MAX_AGE_MS: Joi.number()
+    .integer()
+    .default(15 * 60 * 1000),
+  COOKIE_REFRESH_MAX_AGE_MS: Joi.number()
+    .integer()
+    .default(30 * 24 * 60 * 60 * 1000),
 
   LOG_LEVEL: Joi.string()
     .valid("fatal", "error", "warn", "info", "debug", "trace")
@@ -115,11 +122,23 @@ const cookieOptions = {
   maxAge: env.COOKIE_MAX_AGE_MS,
 };
 
+const accessCookieOptions = {
+  ...cookieOptions,
+  maxAge: env.COOKIE_ACCESS_MAX_AGE_MS || env.COOKIE_MAX_AGE_MS,
+};
+
+const refreshCookieOptions = {
+  ...cookieOptions,
+  maxAge: env.COOKIE_REFRESH_MAX_AGE_MS,
+};
+
 const isProduction = env.NODE_ENV === "production";
 
 module.exports = {
   env,
   corsOrigins,
   cookieOptions,
+  accessCookieOptions,
+  refreshCookieOptions,
   isProduction,
 };

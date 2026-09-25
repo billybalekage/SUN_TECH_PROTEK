@@ -20,7 +20,7 @@ client.post(
 );
 client.post("/auth/signup", validate(signupSchema), authController.signup);
 client.post(
-  "/auth/login",
+  "/auth/login/password",
   validate(loginPasswordSchema),
   authController.loginWithPassword,
 );
@@ -36,5 +36,6 @@ client.post(
   validate(verifyOtpSchema),
   authController.verifyOtp,
 );
+client.post("/auth/refresh", authLimiter, authController.refresh);
 
 module.exports = client;
