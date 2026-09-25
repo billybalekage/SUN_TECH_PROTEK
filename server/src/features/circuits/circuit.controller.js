@@ -6,7 +6,7 @@ const {
   deleteCircuit,
   runCircuitCalculation,
 } = require("./circuit.service");
-const { asyncHandler } = require("../../../common/utils/asyncHandler");
+const { asyncHandler } = require("../../common/utils/asyncHandler");
 
 const create = asyncHandler(async (req, res) => {
   const circuit = await createCircuit(req.user.id, req.body);

@@ -129,8 +129,8 @@ const createApp = () => {
       timestamp: new Date().toISOString(),
     });
   });
-  app.use("/api/circuits", circuitRoutes);
-  app.use("/api/clients", clientRoutes);
+  app.use("/api/v1/circuits", circuitRoutes);
+  app.use("/api/v1/clients", clientRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
