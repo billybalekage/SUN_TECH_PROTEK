@@ -1,24 +1,37 @@
-const Joi = require("joi");
+const { z } = require("zod");
 
-const createProjectSchema = Joi.object({
-  clientName: Joi.string().trim().min(2).max(150).required().messages({
-    "any.required": "Le nom du client est requis",
-  }),
-  address: Joi.string().trim().max(255).allow("").optional(),
-  contact: Joi.string().trim().max(150).allow("").optional(),
+const createProjectSchema = z.object({
+  clientName: z
+    .string({ error: "Le nom du client est requis" })
+    .trim()
+    .min(2)
+    .max(150),
+  address: z.string().trim().max(255).or(z.literal("")).optional(),
+  contact: z.string().trim().max(150).or(z.literal("")).optional(),
 });
 
-const updateProjectSchema = Joi.object({
-  clientName: Joi.string().trim().min(2).max(150).optional(),
-  address: Joi.string().trim().max(255).allow("").optional(),
-  contact: Joi.string().trim().max(150).allow("").optional(),
-  status: Joi.string()
-    .valid("DRAFT", "IN_PROGRESS", "COMPLETED", "ARCHIVED")
-    .optional(),
-})
-  .min(1)
-  .messages({
-    "object.min": "Au moins un champ doit être fourni pour la mise à jour",
+const updateProjectSchema = z
+  .object({
+    clientName: z.string().trim().min(2).max(150).optional(),
+    address: z.string().trim().max(255).or(z.literal("")).optional(),
+    contact: z.string().trim().max(150).or(z.literal("")).optional(),
+    status: z
+      .enum(["DRAFT", "IN_PROGRESS", "COMPLETED", "ARCHIVED"])
+      .optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Au moins un champ doit être fourni pour la mise à jour",
   });
 
-module.exports = { createProjectSchema, updateProjectSchema };
+const projectIdParamsSchema = z.object({
+  id: z.string().uuid("L'identifiant du projet doit être un UUID valide"),
+});
+
+const listProjectsQuerySchema = z.object({}).strict();
+
+module.exports = {
+  createProjectSchema,
+  updateProjectSchema,
+  projectIdParamsSchema,
+  listProjectsQuerySchema,
+};
