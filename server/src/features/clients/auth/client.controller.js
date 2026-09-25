@@ -51,7 +51,8 @@ const refresh = asyncHandler(async (req, res) => {
     await authService.refreshSession(req.cookies?.[REFRESH_TOKEN_COOKIE]),
   );
 });
-const logout = asyncHandler(async (_req, res) => {
+const logout = asyncHandler(async (req, res) => {
+  await authService.logout(req.cookies?.[REFRESH_TOKEN_COOKIE]);
   res.clearCookie(ACCESS_TOKEN_COOKIE, { ...accessCookieOptions, path: "/" });
   res.clearCookie(REFRESH_TOKEN_COOKIE, {
     ...refreshCookieOptions,

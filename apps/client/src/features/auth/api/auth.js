@@ -9,7 +9,7 @@ export function signup({ fullName, email, password, company, phone }) {
 export function loginWithPassword({ email, password }) {
   return api
     .post("clients/auth/login/password", { email, password })
-    .then((res) => res.data.data);
+    .then((res) => res.data);
 }
 
 export function logout() {

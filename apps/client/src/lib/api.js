@@ -5,7 +5,12 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-const AUTH_PATHS_WITHOUT_RETRY = ["/auth/refresh-token", "/auth/login"];
+const AUTH_PATHS_WITHOUT_RETRY = [
+  "clients/auth/refresh",
+  "clients/auth/login",
+  "clients/auth/otp",
+  "clients/auth/signup",
+];
 
 let refreshPromise = null;
 

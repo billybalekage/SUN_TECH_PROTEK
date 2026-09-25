@@ -48,6 +48,41 @@ async function invalidateUserOtps(userId) {
   });
 }
 
+async function createRefreshToken(data) {
+  return prisma.refreshToken.create({ data });
+}
+
+async function findRefreshToken({ jti, tokenHash }) {
+  return prisma.refreshToken.findFirst({ where: { jti, tokenHash } });
+}
+
+async function rotateRefreshToken({ currentId, familyId, nextToken }) {
+  return prisma.$transaction(async (transaction) => {
+    const invalidated = await transaction.refreshToken.updateMany({
+      where: { id: currentId, familyId, usedAt: null, revokedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    if (invalidated.count !== 1) {
+      await transaction.refreshToken.updateMany({
+        where: { familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return false;
+    }
+
+    await transaction.refreshToken.create({ data: nextToken });
+    return true;
+  });
+}
+
+async function revokeRefreshToken({ jti, tokenHash }) {
+  return prisma.refreshToken.updateMany({
+    where: { jti, tokenHash, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}
+
 module.exports = {
   findRoleByName,
   findUserByEmail,
@@ -57,4 +92,8 @@ module.exports = {
   findValidOtp,
   markOtpUsed,
   invalidateUserOtps,
+  createRefreshToken,
+  findRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
 };

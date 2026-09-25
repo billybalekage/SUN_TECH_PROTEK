@@ -4,7 +4,7 @@ import LoginForm from "../components/LoginForm";
 const LoginPage = () => {
   return (
     <AuthLayout
-      title="Bienvienue. "
+      title="Bienvenue"
       description="Connectez-vous à votre espace administrateur"
     >
       <LoginForm />

@@ -6,7 +6,12 @@ const THEME_STORAGE_KEY = "sun-tech-protek-theme";
 function getStoredTheme() {
   if (typeof window === "undefined") return "system";
 
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  let storedTheme;
+  try {
+    storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  } catch {
+    return "system";
+  }
   return themeOptions.some((theme) => theme.value === storedTheme)
     ? storedTheme
     : "system";
@@ -31,7 +36,11 @@ export function ThemeProvider({ children }) {
     };
 
     applyTheme();
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Keep the in-memory theme and continue registering the system listener.
+    }
 
     if (theme !== "system") return undefined;
 

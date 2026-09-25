@@ -6,6 +6,7 @@ const App = () => {
   return (
     <ThemeProvider>
       <Theme>
+        <Header />
         <Router />
       </Theme>
     </ThemeProvider>

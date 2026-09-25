@@ -12,7 +12,7 @@ export function useSignup() {
     onSuccess: (data) => {
       queryClient.setQueryData(["auth", "me"], data.user);
       toast.add({ title: "Compte créé avec succès", type: "success" });
-      navigate("/login");
+      navigate("/dashboard");
     },
   });
 }
