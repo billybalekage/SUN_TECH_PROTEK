@@ -1,5 +1,8 @@
 const Joi = require("joi");
 
+const idParamSchema = Joi.string().uuid().required();
+const installationIdParamSchema = Joi.string().uuid().required();
+
 const createCircuitSchema = Joi.object({
   installationId: Joi.string().uuid().required().messages({
     "string.uuid": "L'identifiant de l'installation doit être un UUID valide",
@@ -51,4 +54,26 @@ const updateCircuitSchema = createCircuitSchema
     "object.min": "Au moins un champ doit être fourni pour la mise à jour",
   });
 
-module.exports = { createCircuitSchema, updateCircuitSchema };
+const runCalculationSchema = Joi.object({
+  inCurrent: Joi.number().positive().required().messages({
+    "any.required": "Le calibre de la protection (inCurrent) est requis",
+  }),
+  izCurrent: Joi.number().positive().required().messages({
+    "any.required": "L'intensité admissible retenue (izCurrent) est requise",
+  }),
+  sectionByAmpacity: Joi.number().positive().optional(),
+  maxDeltaUPercent: Joi.number().positive().default(5),
+  rho: Joi.number().positive().optional(),
+  k1: Joi.number().positive().default(1),
+  k2: Joi.number().positive().default(1),
+  k3: Joi.number().positive().default(1),
+  m: Joi.number().positive().default(1),
+});
+
+module.exports = {
+  idParamSchema,
+  installationIdParamSchema,
+  createCircuitSchema,
+  updateCircuitSchema,
+  runCalculationSchema,
+};

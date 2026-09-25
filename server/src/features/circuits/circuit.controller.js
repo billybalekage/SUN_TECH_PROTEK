@@ -1,57 +1,55 @@
-const circuitService = require("./circuit.service");
+const {
+  createCircuit,
+  getCircuit,
+  listCircuitsByInstallation,
+  updateCircuit,
+  deleteCircuit,
+  runCircuitCalculation,
+} = require("./circuit.service");
+const { asyncHandler } = require("../../../common/utils/asyncHandler");
 
-function handleControllerError(error, res) {
-  const statusCode = error.statusCode || 500;
-  return res.status(statusCode).json({
-    error: statusCode === 500 ? "Internal server error" : error.message,
-  });
-}
+const create = asyncHandler(async (req, res) => {
+  const circuit = await createCircuit(req.user.id, req.body);
+  res.status(201).json(circuit);
+});
 
-async function create(req, res) {
-  try {
-    const circuit = await circuitService.createCircuit(req.body);
-    return res.status(201).json(circuit);
-  } catch (error) {
-    return handleControllerError(error, res);
-  }
-}
+const getById = asyncHandler(async (req, res) => {
+  const circuit = await getCircuit(req.user.id, req.params.id);
+  res.json(circuit);
+});
 
-async function getById(req, res) {
-  try {
-    const circuit = await circuitService.getCircuitById(req.params.id);
-    return res.status(200).json(circuit);
-  } catch (error) {
-    return handleControllerError(error, res);
-  }
-}
+const listByInstallation = asyncHandler(async (req, res) => {
+  const circuits = await listCircuitsByInstallation(
+    req.user.id,
+    req.params.installationId,
+  );
+  res.json(circuits);
+});
 
-async function listByInstallation(req, res) {
-  try {
-    const circuits = await circuitService.listCircuitsByInstallation(
-      req.params.installationId,
-    );
-    return res.status(200).json(circuits);
-  } catch (error) {
-    return handleControllerError(error, res);
-  }
-}
+const update = asyncHandler(async (req, res) => {
+  const circuit = await updateCircuit(req.user.id, req.params.id, req.body);
+  res.json(circuit);
+});
 
-async function update(req, res) {
-  try {
-    const circuit = await circuitService.updateCircuit(req.params.id, req.body);
-    return res.status(200).json(circuit);
-  } catch (error) {
-    return handleControllerError(error, res);
-  }
-}
+const remove = asyncHandler(async (req, res) => {
+  await deleteCircuit(req.user.id, req.params.id);
+  res.status(204).send();
+});
 
-async function remove(req, res) {
-  try {
-    await circuitService.deleteCircuit(req.params.id);
-    return res.status(204).send();
-  } catch (error) {
-    return handleControllerError(error, res);
-  }
-}
+const runCalculation = asyncHandler(async (req, res) => {
+  const result = await runCircuitCalculation(
+    req.user.id,
+    req.params.id,
+    req.body,
+  );
+  res.json(result);
+});
 
-module.exports = { create, getById, listByInstallation, update, remove };
+module.exports = {
+  create,
+  getById,
+  listByInstallation,
+  update,
+  remove,
+  runCalculation,
+};

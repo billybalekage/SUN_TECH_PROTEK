@@ -14,6 +14,9 @@ const { globalSlowDown } = require("../common/middlewares/reteLimiter");
 const notFound = require("../common/middlewares/notFound");
 const errorHandler = require("../common/errors/errorHandler");
 
+const circuitRoutes = require("../features/circuits/circuit.route");
+const clientRoutes = require("../features/clients/auth/client.routes");
+
 const createApp = () => {
   const app = express();
   app.use(express.json());
@@ -109,9 +112,6 @@ const createApp = () => {
     });
   });
 
-  app.use(notFound);
-  app.use(errorHandler);
-
   app.use((req, res, next) => {
     res.locals.cookieOptions = {
       httpOnly: true,
@@ -129,6 +129,11 @@ const createApp = () => {
       timestamp: new Date().toISOString(),
     });
   });
+  app.use("/api/circuits", circuitRoutes);
+  app.use("/api/clients", clientRoutes);
+
+  app.use(notFound);
+  app.use(errorHandler);
 
   return app;
 };

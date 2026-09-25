@@ -1,7 +1,10 @@
 const prisma = require("../../config/database");
 
 async function findInstallationById(id) {
-  return prisma.installation.findUnique({ where: { id } });
+  return prisma.installation.findUnique({
+    where: { id },
+    include: { project: true },
+  });
 }
 
 //Crée un circuit rattaché à une installation.
@@ -16,7 +19,7 @@ async function findCircuitById(id) {
     include: {
       calculationResult: true,
       circuitComponents: { include: { component: true } },
-      installation: true,
+      installation: { include: { project: true } },
     },
   });
 }
