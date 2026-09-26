@@ -1,4 +1,4 @@
-const normRepository = require("./repository");
+const normRepository = require("./norm.repository");
 const {
   NotFoundError,
   BadRequestError,
@@ -10,20 +10,6 @@ const {
  *
  * @param {"ECLAIRAGE"|"AUTRES_USAGES"} usageType
  * @returns {Promise<number>}
- * 
- * @param {object} params
- * @param {string} params.installMethod - Méthode de référence ("B1", "C", ...)
- * @param {string} params.insulation - "PVC" ou "PR"
- * @param {string} params.conductorMaterial - "CU" ou "AL"
- * @param {number} params.section - Section du câble (mm²)
- * @returns {Promise<number>}
- * @param {object} params
- * @param {string} params.installMethod
- * @param {string} params.insulation
- * @param {string} params.conductorMaterial
- * @param {number} params.requiredCurrent - Courant corrigé (Iz') en A
- * @returns {Promise<number|null>} Section (mm²), ou null si aucune ne suffit
-
  */
 async function getMaxDeltaUPercent(usageType) {
   const rule = await normRepository.findByCode("DELTA_U_MAX");
@@ -43,6 +29,18 @@ async function getMaxDeltaUPercent(usageType) {
   return value;
 }
 
+/**
+ * Retourne l'intensité admissible de base (Iz0) pour une section.
+ * Les tables actuellement fournies par seed-ampacity.js couvrent B1 et C,
+ * avec une isolation PVC et un conducteur cuivre (CU).
+ *
+ * @param {object} params
+ * @param {"B1"|"C"} params.installMethod
+ * @param {"PVC"} params.insulation
+ * @param {"CU"} params.conductorMaterial
+ * @param {number} params.section Section du câble en mm²
+ * @returns {Promise<number>}
+ */
 async function getBaseAmpacity({
   installMethod,
   insulation,
@@ -74,6 +72,18 @@ async function getBaseAmpacity({
   return value;
 }
 
+/**
+ * Recherche la plus petite section dont l'intensité admissible couvre le
+ * courant requis. Les tables actuellement fournies par seed-ampacity.js
+ * couvrent B1 et C, avec une isolation PVC et un conducteur cuivre (CU).
+ *
+ * @param {object} params
+ * @param {"B1"|"C"} params.installMethod
+ * @param {"PVC"} params.insulation
+ * @param {"CU"} params.conductorMaterial
+ * @param {number} params.requiredCurrent Courant requis en A
+ * @returns {Promise<number|null>} Section en mm², ou null si aucune ne suffit
+ */
 async function findMinSectionForAmpacity({
   installMethod,
   insulation,
