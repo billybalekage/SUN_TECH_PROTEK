@@ -10,20 +10,7 @@ const {
  *
  * @param {"ECLAIRAGE"|"AUTRES_USAGES"} usageType
  * @returns {Promise<number>}
- * 
- * @param {object} params
- * @param {string} params.installMethod - Méthode de référence ("B1", "C", ...)
- * @param {string} params.insulation - "PVC" ou "PR"
- * @param {string} params.conductorMaterial - "CU" ou "AL"
- * @param {number} params.section - Section du câble (mm²)
- * @returns {Promise<number>}
- * @param {object} params
- * @param {string} params.installMethod
- * @param {string} params.insulation
- * @param {string} params.conductorMaterial
- * @param {number} params.requiredCurrent - Courant corrigé (Iz') en A
- * @returns {Promise<number|null>} Section (mm²), ou null si aucune ne suffit
-
+ * @throws {NotFoundError} Si la règle ou le seuil de cet usage est absent.
  */
 async function getMaxDeltaUPercent(usageType) {
   const rule = await normRepository.findByCode("DELTA_U_MAX");
@@ -43,6 +30,17 @@ async function getMaxDeltaUPercent(usageType) {
   return value;
 }
 
+/**
+ * Lit l'intensité admissible de base pour une section et une combinaison enregistrées.
+ * @param {object} params - Critères de lecture de la table.
+ * @param {string} params.installMethod - Méthode de référence ("B1", "C", ...).
+ * @param {string} params.insulation - Isolation présente dans la table, par exemple "PVC".
+ * @param {string} params.conductorMaterial - Matériau présent dans la table, par exemple "CU".
+ * @param {number} params.section - Section du câble en mm².
+ * @returns {Promise<number>} Intensité admissible de base (Iz0) en A.
+ * @throws {NotFoundError} Si la règle AMPACITY_TABLE est absente.
+ * @throws {BadRequestError} Si la combinaison ou la section est absente de la table.
+ */
 async function getBaseAmpacity({
   installMethod,
   insulation,
@@ -74,6 +72,17 @@ async function getBaseAmpacity({
   return value;
 }
 
+/**
+ * Recherche la plus petite section enregistrée supportant le courant demandé.
+ * @param {object} params - Critères de recherche dans la table.
+ * @param {string} params.installMethod - Méthode de référence enregistrée.
+ * @param {string} params.insulation - Isolation enregistrée.
+ * @param {string} params.conductorMaterial - Matériau du conducteur enregistré.
+ * @param {number} params.requiredCurrent - Courant corrigé (Iz') en A.
+ * @returns {Promise<number|null>} Section en mm², ou null si aucune ne suffit.
+ * @throws {NotFoundError} Si la règle AMPACITY_TABLE est absente.
+ * @throws {BadRequestError} Si la combinaison est absente de la table.
+ */
 async function findMinSectionForAmpacity({
   installMethod,
   insulation,

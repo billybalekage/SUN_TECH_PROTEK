@@ -6,6 +6,11 @@ const COMPONENT_TYPES = Object.freeze({
 	CABLE: "CABLE",
 });
 
+/**
+ * Convertit une valeur de catalogue en nombre, en déléguant à toNumber si disponible.
+ * @param {*} value - Valeur numérique, convertible ou de type Decimal.
+ * @returns {number|null} Résultat de toNumber, sinon nombre fini ou null si absent/non fini.
+ */
 function toNumber(value) {
 	if (value === null || value === undefined) return null;
 	if (typeof value.toNumber === "function") return value.toNumber();
@@ -13,13 +18,36 @@ function toNumber(value) {
 	return Number.isFinite(number) ? number : null;
 }
 
+/**
+ * Vérifie qu'une valeur est un nombre fini strictement positif.
+ * @param {number} value - Valeur à vérifier.
+ * @param {string} label - Nom du champ utilisé dans le message d'erreur.
+ * @returns {void}
+ * @throws {BadRequestError} Si la valeur n'est pas un nombre fini strictement positif.
+ */
 function validatePositive(value, label) {
 	if (!Number.isFinite(value) || value <= 0) {
 		throw new BadRequestError(`${label} doit être un nombre positif`);
 	}
 }
 
+/**
+ * Construit le service de sélection avec un dépôt de composants injectable.
+ * @param {{findByType: function(string): Promise<object[]>}} [repository=componentRepository] - Dépôt à interroger.
+ * @returns {{matchCommercialComponents: Function}} Opération de recherche de composants compatibles.
+ */
 function createComponentService(repository = componentRepository) {
+	/**
+	 * Sélectionne les protections de calibre exact et les câbles de section suffisante.
+	 * Les spécifications demandées doivent correspondre exactement à celles du câble.
+	 * @param {object} params - Critères issus du dimensionnement.
+	 * @param {number} params.inCurrent - Calibre de protection recherché en A.
+	 * @param {number} params.sectionMm2 - Section minimale du câble en mm².
+	 * @param {number} [params.minimumBreakingCapacity] - Pouvoir de coupure minimal, dans l'unité du catalogue.
+	 * @param {object} [params.cableSpecifications={}] - Propriétés attendues dans technicalSpecs.
+	 * @returns {Promise<{protections: object[], cables: object[]}>} Composants compatibles.
+	 * @throws {BadRequestError} Si un critère numérique est invalide ou les spécifications ne sont pas un objet.
+	 */
 	async function matchCommercialComponents({
 		inCurrent,
 		sectionMm2,

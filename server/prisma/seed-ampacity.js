@@ -57,6 +57,10 @@ const AMPACITY_TABLE = {
   },
 };
 
+/**
+ * Crée ou actualise la table indicative des intensités admissibles et journalise le succès.
+ * @returns {Promise<void>} Résout après les opérations et leur affichage.
+ */
 async function main() {
   await prisma.normRule.upsert({
     where: { code: "AMPACITY_TABLE" },
