@@ -9,21 +9,8 @@ const {
  * selon le type d'usage du circuit.
  *
  * @param {"ECLAIRAGE"|"AUTRES_USAGES"} usageType
- * @returns {Promise<number>}
- * 
- * @param {object} params
- * @param {string} params.installMethod - Méthode de référence ("B1", "C", ...)
- * @param {string} params.insulation - "PVC" ou "PR"
- * @param {string} params.conductorMaterial - "CU" ou "AL"
- * @param {number} params.section - Section du câble (mm²)
- * @returns {Promise<number>}
- * @param {object} params
- * @param {string} params.installMethod
- * @param {string} params.insulation
- * @param {string} params.conductorMaterial
- * @param {number} params.requiredCurrent - Courant corrigé (Iz') en A
- * @returns {Promise<number|null>} Section (mm²), ou null si aucune ne suffit
-
+ * @returns {Promise<number>} Seuil configuré en pourcentage.
+ * @throws {NotFoundError} Si la règle ou le seuil pour cet usage est absent.
  */
 async function getMaxDeltaUPercent(usageType) {
   const rule = await normRepository.findByCode("DELTA_U_MAX");
@@ -43,6 +30,18 @@ async function getMaxDeltaUPercent(usageType) {
   return value;
 }
 
+/**
+ * Retourne l'intensité admissible de base (Iz0) d'une section.
+ *
+ * @param {object} params
+ * @param {string} params.installMethod Méthode de référence.
+ * @param {string} params.insulation Type d'isolation.
+ * @param {string} params.conductorMaterial Matériau du conducteur.
+ * @param {number} params.section Section du câble en mm².
+ * @returns {Promise<number>} Intensité admissible en ampères.
+ * @throws {NotFoundError} Si la règle AMPACITY_TABLE est absente.
+ * @throws {BadRequestError} Si la combinaison ou la section est absente de la table.
+ */
 async function getBaseAmpacity({
   installMethod,
   insulation,
@@ -74,6 +73,19 @@ async function getBaseAmpacity({
   return value;
 }
 
+/**
+ * Recherche la plus petite section dont l'intensité admissible couvre le
+ * courant requis.
+ *
+ * @param {object} params
+ * @param {string} params.installMethod Méthode de référence.
+ * @param {string} params.insulation Type d'isolation.
+ * @param {string} params.conductorMaterial Matériau du conducteur.
+ * @param {number} params.requiredCurrent Courant requis en ampères.
+ * @returns {Promise<number|null>} Section en mm², ou null si aucune ne suffit.
+ * @throws {NotFoundError} Si la règle AMPACITY_TABLE est absente.
+ * @throws {BadRequestError} Si la combinaison n'existe pas dans la table.
+ */
 async function findMinSectionForAmpacity({
   installMethod,
   insulation,
