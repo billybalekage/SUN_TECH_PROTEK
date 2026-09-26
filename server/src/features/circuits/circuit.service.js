@@ -5,6 +5,7 @@ const {
 } = require("../../common/errors/AppErrors");
 const {
   calculateIb,
+  selectProtectionRating,
   RESISTIVITY,
   calculateDeltaUPercent,
   calculateMinSectionByVoltageDrop,
@@ -56,9 +57,28 @@ async function deleteCircuit(userId, circuitId) {
   return circuitRepository.deleteCircuit(circuitId);
 }
 
+/**
+ * Dimensionne un circuit accessible à l'utilisateur et enregistre son résultat.
+ * Déduit le calibre de protection du courant d'emploi ; isCompliant et reasons
+ * reflètent uniquement la coordination Ib ≤ In ≤ Iz.
+ * @param {string} userId - Identifiant du propriétaire du projet.
+ * @param {string} circuitId - Identifiant du circuit à calculer.
+ * @param {object} [options={}] - Paramètres complémentaires du calcul.
+ * @param {number} options.izCurrent - Intensité admissible retenue en A, requise pour la coordination.
+ * @param {number} [options.sectionByAmpacity] - Section minimale selon l'intensité admissible, en mm².
+ * @param {number} [options.maxDeltaUPercent=5] - Chute de tension maximale utilisée pour le dimensionnement, en %.
+ * @param {number} [options.rho=RESISTIVITY.COPPER] - Résistivité en Ω·mm²/m.
+ * @param {number} [options.k1=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.k2=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.k3=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.m=1] - Rapport de section phase/neutre pour le calcul de court-circuit.
+ * @returns {Promise<{ib: number, deltaUPercent: number, sectionMm2: number, inCurrent: number, izCurrent: number, icc: number, isCompliant: boolean, reasons: string[]}>} Résultat enregistré et motifs de non-coordination.
+ * @throws {NotFoundError} Si le circuit est absent ou inaccessible à l'utilisateur.
+ * @throws {BadRequestError} Si l'installation, un calibre, une section ou izCurrent manque.
+ * @throws {Error} Si une formule rejette ses paramètres.
+ */
 async function runCircuitCalculation(userId, circuitId, options = {}) {
   const {
-    inCurrent,
     izCurrent,
     sectionByAmpacity,
     maxDeltaUPercent = 5,
@@ -85,6 +105,13 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     circuit.cosPhi,
     installation.phaseType,
   );
+
+  const inCurrent = selectProtectionRating(ib);
+  if (inCurrent === null) {
+    throw new BadRequestError(
+      "Aucun calibre de protection normalisé ne couvre le courant d'emploi de ce circuit",
+    );
+  }
 
   // 2. Section minimale par critère de chute de tension
   const sectionByVoltageDrop = calculateMinSectionByVoltageDrop({
@@ -130,9 +157,9 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
   });
 
   // 6. Coordination des protections
-  if (!inCurrent || !izCurrent) {
+  if (!izCurrent) {
     throw new BadRequestError(
-      "Le calibre de protection (inCurrent) et l'intensité admissible retenue (izCurrent) sont requis pour vérifier la coordination",
+      "L'intensité admissible retenue (izCurrent) est requise pour vérifier la coordination",
     );
   }
   const coordination = checkCoordination({ ib, inCurrent, iz: izCurrent });

@@ -55,9 +55,6 @@ const updateCircuitSchema = createCircuitSchema
   });
 
 const runCalculationSchema = Joi.object({
-  inCurrent: Joi.number().positive().required().messages({
-    "any.required": "Le calibre de la protection (inCurrent) est requis",
-  }),
   izCurrent: Joi.number().positive().required().messages({
     "any.required": "L'intensité admissible retenue (izCurrent) est requise",
   }),
