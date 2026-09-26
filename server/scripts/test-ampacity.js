@@ -3,6 +3,10 @@ const {
   findMinSectionForAmpacity,
 } = require("../src/core/norms/norm.service");
 
+/**
+ * Affiche deux exemples de lecture des intensités admissibles depuis les règles enregistrées.
+ * @returns {Promise<void>} Résout après les opérations et leur affichage.
+ */
 async function main() {
   console.log(
     "Iz0 pour 2.5mm² méthode C :",

@@ -8,6 +8,10 @@ async function findByCode(code) {
   return prisma.normRule.findUnique({ where: { code } });
 }
 
+/**
+ * Liste toutes les règles normatives par code croissant.
+ * @returns {Promise<object[]>} Règles enregistrées, ou tableau vide si aucune n'existe.
+ */
 async function listAll() {
   return prisma.normRule.findMany({ orderBy: { code: "asc" } });
 }

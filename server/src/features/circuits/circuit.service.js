@@ -57,6 +57,26 @@ async function deleteCircuit(userId, circuitId) {
   return circuitRepository.deleteCircuit(circuitId);
 }
 
+/**
+ * Dimensionne un circuit accessible à l'utilisateur et enregistre son résultat.
+ * Déduit le calibre de protection du courant d'emploi ; isCompliant et reasons
+ * reflètent uniquement la coordination Ib ≤ In ≤ Iz.
+ * @param {string} userId - Identifiant du propriétaire du projet.
+ * @param {string} circuitId - Identifiant du circuit à calculer.
+ * @param {object} [options={}] - Paramètres complémentaires du calcul.
+ * @param {number} options.izCurrent - Intensité admissible retenue en A, requise pour la coordination.
+ * @param {number} [options.sectionByAmpacity] - Section minimale selon l'intensité admissible, en mm².
+ * @param {number} [options.maxDeltaUPercent=5] - Chute de tension maximale utilisée pour le dimensionnement, en %.
+ * @param {number} [options.rho=RESISTIVITY.COPPER] - Résistivité en Ω·mm²/m.
+ * @param {number} [options.k1=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.k2=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.k3=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.m=1] - Rapport de section phase/neutre pour le calcul de court-circuit.
+ * @returns {Promise<{ib: number, deltaUPercent: number, sectionMm2: number, inCurrent: number, izCurrent: number, icc: number, isCompliant: boolean, reasons: string[]}>} Résultat enregistré et motifs de non-coordination.
+ * @throws {NotFoundError} Si le circuit est absent ou inaccessible à l'utilisateur.
+ * @throws {BadRequestError} Si l'installation, un calibre, une section ou izCurrent manque.
+ * @throws {Error} Si une formule rejette ses paramètres.
+ */
 async function runCircuitCalculation(userId, circuitId, options = {}) {
   const {
     izCurrent,

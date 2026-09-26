@@ -5,6 +5,10 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
+/**
+ * Crée ou actualise les seuils de chute de tension et journalise le succès.
+ * @returns {Promise<void>} Résout après les opérations et leur affichage.
+ */
 async function main() {
   await prisma.normRule.upsert({
     where: { code: "DELTA_U_MAX" },
