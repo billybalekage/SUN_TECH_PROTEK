@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const Joi = require("joi");
 
 const isProductionEnvironment = process.env.NODE_ENV === "production";
