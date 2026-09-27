@@ -169,7 +169,7 @@ async function getTemperatureFactor({ ambientTempCelsius, insulation }) {
 
   const value = table[String(ambientTempCelsius)];
   if (value === undefined) {
-    throw new NotFoundError(
+    throw new BadRequestError(
       `Température ${ambientTempCelsius}°C non répertoriée pour "${insulation}" — valeurs disponibles : ${Object.keys(table).join(", ")}`,
     );
   }
