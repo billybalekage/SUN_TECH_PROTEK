@@ -9,6 +9,9 @@ const {
   loginPasswordSchema,
   requestOtpSchema,
   verifyOtpSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
   emptyRequestSchema,
 } = require("./client.validator");
 
@@ -37,6 +40,24 @@ client.post(
   authLimiter,
   validate(verifyOtpSchema),
   authController.verifyOtp,
+);
+client.post(
+  "/auth/password/reset/request",
+  authLimiter,
+  validate(requestPasswordResetSchema),
+  authController.requestPasswordReset,
+);
+client.post(
+  "/auth/password/reset",
+  authLimiter,
+  validate(resetPasswordSchema),
+  authController.resetPassword,
+);
+client.post(
+  "/auth/password/change",
+  verifyToken,
+  validate(changePasswordSchema),
+  authController.changePassword,
 );
 client.post("/auth/refresh", authLimiter, authController.refresh);
 

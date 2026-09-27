@@ -12,6 +12,8 @@ const mockAuthRepository = {
   findValidOtp: vi.fn(),
   markOtpUsed: vi.fn(),
   invalidateUserOtps: vi.fn(),
+  updateUserPassword: vi.fn(),
+  revokeAllUserRefreshTokens: vi.fn(),
   createRefreshToken: vi.fn(),
   findRefreshToken: vi.fn(),
   rotateRefreshToken: vi.fn(),
@@ -20,6 +22,7 @@ const mockAuthRepository = {
 
 const mockMailer = {
   sendOtpEmail: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
 };
 
 const originalLoad = Module._load;
@@ -56,6 +59,8 @@ describe("client auth service", () => {
     mockAuthRepository.findUserByEmail.mockResolvedValue({
       id: "user-1",
       email: "client@example.com",
+      isActive: true,
+      role: { name: "ELECTRICIEN" },
     });
     mockAuthRepository.createOtpCode.mockImplementation(
       async (payload) => payload,
@@ -68,6 +73,110 @@ describe("client auth service", () => {
     const otpPayload = mockAuthRepository.createOtpCode.mock.calls[0][0];
     expect(otpPayload.code).not.toBe(mockMailer.sendOtpEmail.mock.calls[0][1]);
     expect(otpPayload.code).toMatch(/^[a-f0-9]{64}$/i);
+    expect(mockAuthRepository.invalidateUserOtps).toHaveBeenCalledWith(
+      "user-1",
+      "LOGIN",
+    );
+    expect(otpPayload.purpose).toBe("LOGIN");
+  });
+
+  it("requests password reset without revealing unknown accounts", async () => {
+    mockAuthRepository.findUserByEmail.mockResolvedValue(null);
+
+    const result = await clientService.requestPasswordReset({
+      email: "unknown@example.com",
+    });
+
+    expect(result.message).toContain("Si un compte correspond");
+    expect(mockAuthRepository.createOtpCode).not.toHaveBeenCalled();
+    expect(mockMailer.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it("stores and emails a purpose-bound password reset code", async () => {
+    mockAuthRepository.findUserByEmail.mockResolvedValue({
+      id: "user-1",
+      email: "client@example.com",
+    });
+    mockAuthRepository.createOtpCode.mockResolvedValue(undefined);
+    mockMailer.sendPasswordResetEmail.mockResolvedValue(undefined);
+
+    await clientService.requestPasswordReset({ email: "client@example.com" });
+
+    const otpPayload = mockAuthRepository.createOtpCode.mock.calls[0][0];
+    expect(otpPayload.purpose).toBe("PASSWORD_RESET");
+    expect(mockAuthRepository.invalidateUserOtps).toHaveBeenCalledWith(
+      "user-1",
+      "PASSWORD_RESET",
+    );
+    expect(otpPayload.code).toMatch(/^[a-f0-9]{64}$/i);
+    expect(otpPayload.code).not.toBe(
+      mockMailer.sendPasswordResetEmail.mock.calls[0][1],
+    );
+  });
+
+  it("resets the password and revokes existing refresh tokens", async () => {
+    mockAuthRepository.findUserByEmail.mockResolvedValue({
+      id: "user-1",
+      isActive: true,
+      role: { name: "ELECTRICIEN" },
+    });
+    mockAuthRepository.findValidOtp.mockResolvedValue({ id: "otp-1" });
+
+    await clientService.resetPassword({
+      email: "client@example.com",
+      code: "123456",
+      newPassword: "new-password",
+    });
+
+    expect(mockAuthRepository.findValidOtp).toHaveBeenCalledWith(
+      "user-1",
+      "123456",
+      "PASSWORD_RESET",
+    );
+    expect(mockAuthRepository.updateUserPassword).toHaveBeenCalledWith(
+      "user-1",
+      expect.not.stringContaining("new-password"),
+    );
+    expect(mockAuthRepository.markOtpUsed).toHaveBeenCalledWith("otp-1");
+    expect(mockAuthRepository.revokeAllUserRefreshTokens).toHaveBeenCalledWith(
+      "user-1",
+    );
+  });
+
+  it("requires the current password before changing it", async () => {
+    mockAuthRepository.findUserById.mockResolvedValue({
+      id: "user-1",
+      isActive: true,
+      passwordHash: "$2a$10$invalid-hash",
+      role: { name: "ELECTRICIEN" },
+    });
+
+    await expect(
+      clientService.changePassword("user-1", {
+        currentPassword: "wrong-password",
+        newPassword: "new-password",
+      }),
+    ).rejects.toThrow("Mot de passe actuel incorrect");
+
+    expect(mockAuthRepository.updateUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("rejects password changes for users outside the electrician role", async () => {
+    mockAuthRepository.findUserById.mockResolvedValue({
+      id: "user-1",
+      isActive: true,
+      passwordHash: "password-hash",
+      role: { name: "ADMIN" },
+    });
+
+    await expect(
+      clientService.changePassword("user-1", {
+        currentPassword: "current-password",
+        newPassword: "new-password",
+      }),
+    ).rejects.toThrow("Utilisateur non authentifié");
+
+    expect(mockAuthRepository.updateUserPassword).not.toHaveBeenCalled();
   });
 
   it("returns a sanitized user from the current session", async () => {

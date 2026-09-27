@@ -11,6 +11,9 @@ const AUTH_PATHS_WITHOUT_RETRY = [
   "clients/auth/login/password",
   "clients/auth/otp/request",
   "clients/auth/otp/verify",
+  "clients/auth/password/reset/request",
+  "clients/auth/password/reset",
+  "clients/auth/password/change",
   "clients/auth/signup",
   "clients/auth/logout",
 ];

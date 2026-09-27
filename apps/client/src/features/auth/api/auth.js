@@ -12,6 +12,24 @@ export function loginWithPassword({ email, password }) {
     .then((res) => res.data);
 }
 
+export function requestPasswordReset({ email }) {
+  return api
+    .post("clients/auth/password/reset/request", { email })
+    .then((res) => res.data);
+}
+
+export function resetPassword({ email, code, newPassword }) {
+  return api
+    .post("clients/auth/password/reset", { email, code, newPassword })
+    .then((res) => res.data);
+}
+
+export function changePassword({ currentPassword, newPassword }) {
+  return api
+    .post("clients/auth/password/change", { currentPassword, newPassword })
+    .then((res) => res.data);
+}
+
 export function getCurrentUser() {
   return api.get("clients/auth/me").then((res) => res.data.user);
 }

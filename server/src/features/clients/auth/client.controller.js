@@ -28,6 +28,7 @@ const signup = asyncHandler(async (req, res) => {
     await authService.signup(req.body),
   );
 });
+
 const loginWithPassword = asyncHandler(async (req, res) => {
   return sendAuthenticatedResponse(
     res,
@@ -35,9 +36,11 @@ const loginWithPassword = asyncHandler(async (req, res) => {
     await authService.loginWithPassword(req.body),
   );
 });
+
 const requestOtp = asyncHandler(async (req, res) => {
   res.status(200).json(await authService.requestOtp(req.body));
 });
+
 const verifyOtp = asyncHandler(async (req, res) => {
   return sendAuthenticatedResponse(
     res,
@@ -45,6 +48,25 @@ const verifyOtp = asyncHandler(async (req, res) => {
     await authService.verifyOtp(req.body),
   );
 });
+
+const requestPasswordReset = asyncHandler(async (req, res) => {
+  return res.status(200).json(await authService.requestPasswordReset(req.body));
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  return res.status(200).json(await authService.resetPassword(req.body));
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+  const result = await authService.changePassword(req.user.id, req.body);
+  res.clearCookie(ACCESS_TOKEN_COOKIE, { ...accessCookieOptions, path: "/" });
+  res.clearCookie(REFRESH_TOKEN_COOKIE, {
+    ...refreshCookieOptions,
+    path: "/api/v1/clients/auth",
+  });
+  return res.status(200).json(result);
+});
+
 const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await authService.getCurrentUser(req.user.id);
 
@@ -54,6 +76,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
   return res.status(200).json({ user });
 });
+
 const refresh = asyncHandler(async (req, res) => {
   return sendAuthenticatedResponse(
     res,
@@ -61,6 +84,7 @@ const refresh = asyncHandler(async (req, res) => {
     await authService.refreshSession(req.cookies?.[REFRESH_TOKEN_COOKIE]),
   );
 });
+
 const logout = asyncHandler(async (req, res) => {
   await authService.logout(req.cookies?.[REFRESH_TOKEN_COOKIE]);
   res.clearCookie(ACCESS_TOKEN_COOKIE, { ...accessCookieOptions, path: "/" });
@@ -76,6 +100,9 @@ module.exports = {
   loginWithPassword,
   requestOtp,
   verifyOtp,
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
   getCurrentUser,
   refresh,
   logout,

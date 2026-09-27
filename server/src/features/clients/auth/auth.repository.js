@@ -41,19 +41,20 @@ async function createUser({
   });
 }
 
-async function createOtpCode({ userId, code, expiresAt }) {
+async function createOtpCode({ userId, code, purpose = "LOGIN", expiresAt }) {
   return prisma.otpCode.create({
-    data: { userId, code: normalizeOtpCode(code), expiresAt },
+    data: { userId, code: normalizeOtpCode(code), purpose, expiresAt },
   });
 }
 
-async function findValidOtp(userId, code) {
+async function findValidOtp(userId, code, purpose = "LOGIN") {
   const normalizedCode = normalizeOtpCode(code);
   const plainCode = String(code).trim();
 
   return prisma.otpCode.findFirst({
     where: {
       userId,
+      purpose,
       used: false,
       expiresAt: { gt: new Date() },
       OR: [{ code: normalizedCode }, { code: plainCode }],
@@ -66,10 +67,24 @@ async function markOtpUsed(otpId) {
   return prisma.otpCode.update({ where: { id: otpId }, data: { used: true } });
 }
 
-async function invalidateUserOtps(userId) {
+async function invalidateUserOtps(userId, purpose) {
   return prisma.otpCode.updateMany({
-    where: { userId, used: false },
+    where: { userId, used: false, ...(purpose ? { purpose } : {}) },
     data: { used: true },
+  });
+}
+
+async function updateUserPassword(userId, passwordHash) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+}
+
+async function revokeAllUserRefreshTokens(userId) {
+  return prisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
   });
 }
 
@@ -124,6 +139,8 @@ module.exports = {
   findValidOtp,
   markOtpUsed,
   invalidateUserOtps,
+  updateUserPassword,
+  revokeAllUserRefreshTokens,
   createRefreshToken,
   findRefreshToken,
   rotateRefreshToken,
