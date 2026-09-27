@@ -7,6 +7,7 @@ const {
   roundToStandardSection,
 } = require("./formulas/chute-tension");
 const { selectFinalSection } = require("./formulas/section-selection");
+const { calculateCorrectedCurrent } = require("./formulas/derating-factors");
 const { calculateIb } = require("./formulas/Ib");
 const {
   STANDARD_PROTECTION_RATINGS,
@@ -17,6 +18,7 @@ const { checkCoordination } = require("./rules/coordination");
 module.exports = {
   // Courant d'emploi
   calculateIb,
+  calculateCorrectedCurrent,
   STANDARD_PROTECTION_RATINGS,
   selectProtectionRating,
 

@@ -5,6 +5,7 @@ const {
 } = require("../../common/errors/AppErrors");
 const {
   calculateIb,
+  calculateCorrectedCurrent,
   selectProtectionRating,
   RESISTIVITY,
   calculateDeltaUPercent,
@@ -14,6 +15,7 @@ const {
   calculateIccMin,
   checkCoordination,
 } = require("../../core/electric-rules");
+const normService = require("../../core/norms/norm");
 
 async function createCircuit(userId, data) {
   const installation = await circuitRepository.findInstallationById(
@@ -59,34 +61,40 @@ async function deleteCircuit(userId, circuitId) {
 
 /**
  * Dimensionne un circuit accessible à l'utilisateur et enregistre son résultat.
- * Déduit le calibre de protection du courant d'emploi ; isCompliant et reasons
- * reflètent uniquement la coordination Ib ≤ In ≤ Iz.
+ * Déduit le calibre de protection, la section et l'intensité admissible des
+ * tables normatives ; isCompliant et reasons reflètent Ib ≤ In ≤ Iz corrigé.
  * @param {string} userId - Identifiant du propriétaire du projet.
  * @param {string} circuitId - Identifiant du circuit à calculer.
  * @param {object} [options={}] - Paramètres complémentaires du calcul.
- * @param {number} options.izCurrent - Intensité admissible retenue en A, requise pour la coordination.
- * @param {number} [options.sectionByAmpacity] - Section minimale selon l'intensité admissible, en mm².
- * @param {number} [options.maxDeltaUPercent=5] - Chute de tension maximale utilisée pour le dimensionnement, en %.
+ * @param {number} [options.izCurrent] - Intensité admissible corrigée en A; sinon déduite des tables.
+ * @param {number} [options.sectionByAmpacity] - Section minimale personnalisée en mm²; sinon déduite des tables.
+ * @param {number} [options.maxDeltaUPercent] - Seuil personnalisé; sinon récupéré selon l'usage.
  * @param {number} [options.rho=RESISTIVITY.COPPER] - Résistivité en Ω·mm²/m.
- * @param {number} [options.k1=1] - Paramètre actuellement inutilisé.
- * @param {number} [options.k2=1] - Paramètre actuellement inutilisé.
- * @param {number} [options.k3=1] - Paramètre actuellement inutilisé.
+ * @param {number} [options.k1=1] - Facteur complémentaire; l'installation est déjà intégrée à la table d'ampacité.
+ * @param {number} [options.k2] - Override facultatif du facteur de groupement normatif.
+ * @param {number} [options.k3] - Override facultatif du facteur de température normatif.
+ * @param {number} [options.ambientTempCelsius=30] - Température utilisée pour la table K3.
+ * @param {string} [options.conductorMaterial=CU] - Matériau du conducteur.
+ * @param {string} [options.usageType] - Usage normatif; déduit de circuitType si absent.
  * @param {number} [options.m=1] - Rapport de section phase/neutre pour le calcul de court-circuit.
  * @returns {Promise<{ib: number, deltaUPercent: number, sectionMm2: number, inCurrent: number, izCurrent: number, icc: number, isCompliant: boolean, reasons: string[]}>} Résultat enregistré et motifs de non-coordination.
  * @throws {NotFoundError} Si le circuit est absent ou inaccessible à l'utilisateur.
- * @throws {BadRequestError} Si l'installation, un calibre, une section ou izCurrent manque.
+ * @throws {BadRequestError} Si les données requises pour sélectionner une ampacité normative manquent.
  * @throws {Error} Si une formule rejette ses paramètres.
  */
 async function runCircuitCalculation(userId, circuitId, options = {}) {
   const {
-    izCurrent,
+    izCurrent: providedIzCurrent,
     sectionByAmpacity,
-    maxDeltaUPercent = 5,
+    maxDeltaUPercent: providedMaxDeltaUPercent,
     rho = RESISTIVITY.COPPER,
     k1 = 1,
-    k2 = 1,
-    k3 = 1,
+    k2: providedK2,
+    k3: providedK3,
     m = 1,
+    ambientTempCelsius = 30,
+    conductorMaterial = "CU",
+    usageType: providedUsageType,
   } = options;
 
   const circuit = await getCircuit(userId, circuitId);
@@ -113,6 +121,44 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     );
   }
 
+  const normalizedUsageType =
+    providedUsageType ??
+    (circuit.circuitType.toUpperCase().includes("ECLAIRAGE")
+      ? "ECLAIRAGE"
+      : "AUTRES_USAGES");
+  const maxDeltaUPercent =
+    providedMaxDeltaUPercent ??
+    (await normService.getMaxDeltaUPercent(normalizedUsageType));
+  const k2 =
+    providedK2 ??
+    (await normService.getGroupingFactor(circuit.numberOfCircuits));
+  const k3 =
+    providedK3 ??
+    (await normService.getTemperatureFactor({
+      ambientTempCelsius,
+      insulation: installation.insulationType,
+    }));
+  const requiredBaseAmpacity = calculateCorrectedCurrent({
+    inCurrent,
+    k1,
+    k2,
+    k3,
+  });
+  const requiredSectionByAmpacity =
+    sectionByAmpacity ??
+    (await normService.findMinSectionForAmpacity({
+      installMethod: installation.installMode,
+      insulation: installation.insulationType,
+      conductorMaterial,
+      requiredCurrent: requiredBaseAmpacity,
+    }));
+
+  if (requiredSectionByAmpacity === null) {
+    throw new BadRequestError(
+      "Aucune section du tableau normatif ne supporte le courant requis avec les facteurs de correction sélectionnés",
+    );
+  }
+
   // 2. Section minimale par critère de chute de tension
   const sectionByVoltageDrop = calculateMinSectionByVoltageDrop({
     rho,
@@ -125,8 +171,11 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
   });
 
   // 3. Section finale retenue
-  const section = sectionByAmpacity
-    ? selectFinalSection({ sectionByVoltageDrop, sectionByAmpacity })
+  const section = requiredSectionByAmpacity
+    ? selectFinalSection({
+        sectionByVoltageDrop,
+        sectionByAmpacity: requiredSectionByAmpacity,
+      })
     : roundToStandardSection(sectionByVoltageDrop);
 
   if (section === null) {
@@ -156,12 +205,14 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     phaseType: installation.phaseType,
   });
 
-  // 6. Coordination des protections
-  if (!izCurrent) {
-    throw new BadRequestError(
-      "L'intensité admissible retenue (izCurrent) est requise pour vérifier la coordination",
-    );
-  }
+  // 6. Intensité admissible corrigée et coordination des protections
+  const baseIz = await normService.getBaseAmpacity({
+    installMethod: installation.installMode,
+    insulation: installation.insulationType,
+    conductorMaterial,
+    section,
+  });
+  const izCurrent = providedIzCurrent ?? baseIz * k1 * k2 * k3;
   const coordination = checkCoordination({ ib, inCurrent, iz: izCurrent });
 
   const result = {
@@ -176,7 +227,12 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
 
   await circuitRepository.saveCalculationResult(circuitId, result);
 
-  return { ...result, reasons: coordination.reasons };
+  return {
+    ...result,
+    reasons: coordination.reasons,
+    baseIz,
+    deratingFactors: { k1, k2, k3 },
+  };
 }
 
 module.exports = {

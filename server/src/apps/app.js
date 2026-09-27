@@ -16,7 +16,9 @@ const errorHandler = require("../common/errors/errorHandler");
 
 const circuitRoutes = require("../features/circuits/circuit.route");
 const clientRoutes = require("../features/clients/auth/client.routes");
+const clientDashboardRoutes = require("../features/clients/dashboard/dashboard.routes");
 const projectRoutes = require("../features/projects/routes/project.route");
+const installationRoutes = require("../features/installations/installation.routes");
 
 const createApp = () => {
   const app = express();
@@ -134,7 +136,9 @@ const createApp = () => {
     });
   });
   app.use("/api/v1/circuits", circuitRoutes);
+  app.use("/api/v1/installations", installationRoutes);
   app.use("/api/v1/clients", clientRoutes);
+  app.use("/api/v1/clients/dashboard", clientDashboardRoutes);
   app.use("/api/v1/projects", projectRoutes);
 
   app.use(notFound);

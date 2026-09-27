@@ -7,6 +7,9 @@ import ForgotPasswordPage from "../features/auth/pages/ForgotPasswordPage";
 import ChangePasswordPage from "../features/auth/pages/ChangePasswordPage";
 import DashboardPage from "./page/Dashboard";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
+import { ProjectDetailPage, ProjectsPage } from "../features/projects/view";
+import { ProjectCreationPage } from "../features/project-creation/view";
+import { CircuitCalculationPage } from "../features/calculation/view";
 
 const Router = () => {
   return (
@@ -29,6 +32,38 @@ const Router = () => {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects"
+        element={
+          <ProtectedRoute>
+            <ProjectsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/new"
+        element={
+          <ProtectedRoute>
+            <ProjectCreationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/circuits/new"
+        element={
+          <ProtectedRoute>
+            <CircuitCalculationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId"
+        element={
+          <ProtectedRoute>
+            <ProjectDetailPage />
           </ProtectedRoute>
         }
       />

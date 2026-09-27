@@ -117,8 +117,70 @@ async function findMinSectionForAmpacity({
   return match ?? null;
 }
 
+/**
+ * Retourne le facteur de correction K2 (groupement de circuits).
+ * @param {number} numberOfCircuits - Nombre de circuits groupés ensemble
+ * @returns {Promise<number>}
+ */
+async function getGroupingFactor(numberOfCircuits) {
+  if (numberOfCircuits <= 0) {
+    throw new BadRequestError("Le nombre de circuits doit être positif");
+  }
+
+  const rule = await normRepository.findByCode("K2_GROUPING");
+  if (!rule) {
+    throw new NotFoundError(
+      "Règle normative K2_GROUPING introuvable — avez-vous lancé le seed ?",
+    );
+  }
+
+  const key = numberOfCircuits <= 9 ? String(numberOfCircuits) : "10+";
+  const value = rule.parameters?.[key];
+  if (value === undefined) {
+    throw new NotFoundError(
+      `Aucune valeur K2 définie pour ${numberOfCircuits} circuits`,
+    );
+  }
+
+  return value;
+}
+
+/**
+ * Retourne le facteur de correction K3 (température ambiante).
+ * @param {object} params
+ * @param {number} params.ambientTempCelsius - Température ambiante (°C), doit correspondre à une valeur normalisée du tableau
+ * @param {"PVC"|"PR"} params.insulation
+ * @returns {Promise<number>}
+ */
+async function getTemperatureFactor({ ambientTempCelsius, insulation }) {
+  const rule = await normRepository.findByCode("K3_TEMPERATURE");
+  if (!rule) {
+    throw new NotFoundError(
+      "Règle normative K3_TEMPERATURE introuvable — avez-vous lancé le seed ?",
+    );
+  }
+
+  const table = rule.parameters?.[insulation];
+  if (!table) {
+    throw new BadRequestError(
+      `Aucune table K3 pour l'isolation "${insulation}"`,
+    );
+  }
+
+  const value = table[String(ambientTempCelsius)];
+  if (value === undefined) {
+    throw new NotFoundError(
+      `Température ${ambientTempCelsius}°C non répertoriée pour "${insulation}" — valeurs disponibles : ${Object.keys(table).join(", ")}`,
+    );
+  }
+
+  return value;
+}
+
 module.exports = {
   getMaxDeltaUPercent,
   getBaseAmpacity,
   findMinSectionForAmpacity,
+  getGroupingFactor,
+  getTemperatureFactor,
 };
