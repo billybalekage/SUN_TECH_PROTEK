@@ -22,4 +22,16 @@ async function sendOtpEmail(to, code) {
   });
 }
 
-module.exports = { sendOtpEmail };
+async function sendPasswordResetEmail(to, code) {
+  await transporter.sendMail({
+    from: {
+      name: env.smtp.fromName,
+      address: env.smtp.fromEmail,
+    },
+    to,
+    subject: "Code de réinitialisation de votre mot de passe PROTECK",
+    text: `Votre code de réinitialisation est : ${code} (valide ${env.OTP_EXPIRATION_MINUTES} minutes).`,
+  });
+}
+
+module.exports = { sendOtpEmail, sendPasswordResetEmail };

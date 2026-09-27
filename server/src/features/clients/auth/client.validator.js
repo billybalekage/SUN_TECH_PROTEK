@@ -25,6 +25,25 @@ const verifyOtpSchema = Joi.object({
   code: Joi.string().length(6).required(),
 });
 
+const requestPasswordResetSchema = Joi.object({
+  email: Joi.string().email().required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  email: Joi.string().email().required(),
+  code: Joi.string().length(6).required(),
+  newPassword: Joi.string().min(8).required().messages({
+    "string.min": "Le mot de passe doit contenir au moins 8 caractères",
+  }),
+});
+
+const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required(),
+  newPassword: Joi.string().min(8).required().messages({
+    "string.min": "Le mot de passe doit contenir au moins 8 caractères",
+  }),
+});
+
 const emptyRequestSchema = z.object({}).strict().optional();
 
 module.exports = {
@@ -32,5 +51,8 @@ module.exports = {
   loginPasswordSchema,
   requestOtpSchema,
   verifyOtpSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
   emptyRequestSchema,
 };

@@ -3,7 +3,10 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const authRepository = require("./auth.repository");
-const { sendOtpEmail } = require("../../../common/utils/mailer");
+const {
+  sendOtpEmail,
+  sendPasswordResetEmail,
+} = require("../../../common/utils/mailer");
 const { env } = require("../../../config/env");
 const { ConflictError } = require("../../../common/errors/AppErrors");
 const {
@@ -120,6 +123,34 @@ async function requestOtp({ email }) {
   };
 
   const user = await authRepository.findUserByEmail(email);
+  if (!user || !user.isActive || user.role?.name !== "ELECTRICIEN") {
+    return genericResponse;
+  }
+
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(
+    Date.now() + env.OTP_EXPIRATION_MINUTES * 60 * 1000,
+  );
+
+  await authRepository.invalidateUserOtps(user.id, "LOGIN");
+  await authRepository.createOtpCode({
+    userId: user.id,
+    code: hashOtpCode(code),
+    purpose: "LOGIN",
+    expiresAt,
+  });
+  await sendOtpEmail(user.email, code);
+
+  return genericResponse;
+}
+
+async function requestPasswordReset({ email }) {
+  const genericResponse = {
+    message:
+      "Si un compte correspond à cette adresse e-mail, un code de réinitialisation a été envoyé.",
+  };
+
+  const user = await authRepository.findUserByEmail(email);
   if (!user) {
     return genericResponse;
   }
@@ -129,15 +160,63 @@ async function requestOtp({ email }) {
     Date.now() + env.OTP_EXPIRATION_MINUTES * 60 * 1000,
   );
 
-  await authRepository.invalidateUserOtps(user.id);
+  await authRepository.invalidateUserOtps(user.id, "PASSWORD_RESET");
   await authRepository.createOtpCode({
     userId: user.id,
     code: hashOtpCode(code),
+    purpose: "PASSWORD_RESET",
     expiresAt,
   });
-  await sendOtpEmail(user.email, code);
+  await sendPasswordResetEmail(user.email, code);
 
   return genericResponse;
+}
+
+async function resetPassword({ email, code, newPassword }) {
+  const user = await authRepository.findUserByEmail(email);
+  if (!user || !user.isActive || user.role?.name !== "ELECTRICIEN") {
+    throw new UnauthorizedError("Code invalide ou expiré");
+  }
+
+  const otp = await authRepository.findValidOtp(
+    user.id,
+    code,
+    "PASSWORD_RESET",
+  );
+  if (!otp) {
+    throw new UnauthorizedError("Code invalide ou expiré");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await authRepository.updateUserPassword(user.id, passwordHash);
+  await authRepository.markOtpUsed(otp.id);
+  await authRepository.invalidateUserOtps(user.id, "PASSWORD_RESET");
+  await authRepository.revokeAllUserRefreshTokens(user.id);
+
+  return { message: "Mot de passe réinitialisé avec succès" };
+}
+
+async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await authRepository.findUserById(userId);
+  if (
+    !user ||
+    !user.isActive ||
+    user.role?.name !== "ELECTRICIEN" ||
+    !user.passwordHash
+  ) {
+    throw new UnauthorizedError("Utilisateur non authentifié");
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    throw new UnauthorizedError("Mot de passe actuel incorrect");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await authRepository.updateUserPassword(user.id, passwordHash);
+  await authRepository.revokeAllUserRefreshTokens(user.id);
+
+  return { message: "Mot de passe modifié avec succès" };
 }
 
 async function verifyOtp({ email, code }) {
@@ -240,6 +319,9 @@ module.exports = {
   loginWithPassword,
   requestOtp,
   verifyOtp,
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
   getCurrentUser,
   refreshSession,
   logout,

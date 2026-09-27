@@ -69,6 +69,15 @@ const LoginForm = () => {
           {...register("password")}
         />
 
+        <div className="-mt-1 text-right">
+          <Link
+            to="/password/forgot"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Mot de passe oublié ?
+          </Link>
+        </div>
+
         <Button
           type="submit"
           disabled={login.isPending}
