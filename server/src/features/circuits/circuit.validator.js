@@ -55,16 +55,17 @@ const updateCircuitSchema = createCircuitSchema
   });
 
 const runCalculationSchema = Joi.object({
-  izCurrent: Joi.number().positive().required().messages({
-    "any.required": "L'intensité admissible retenue (izCurrent) est requise",
-  }),
+  izCurrent: Joi.number().positive().optional(),
   sectionByAmpacity: Joi.number().positive().optional(),
-  maxDeltaUPercent: Joi.number().positive().default(5),
+  maxDeltaUPercent: Joi.number().positive().optional(),
   rho: Joi.number().positive().optional(),
   k1: Joi.number().positive().default(1),
-  k2: Joi.number().positive().default(1),
-  k3: Joi.number().positive().default(1),
+  k2: Joi.number().positive().optional(),
+  k3: Joi.number().positive().optional(),
   m: Joi.number().positive().default(1),
+  ambientTempCelsius: Joi.number().positive().default(30),
+  conductorMaterial: Joi.string().trim().uppercase().default("CU"),
+  usageType: Joi.string().valid("ECLAIRAGE", "AUTRES_USAGES").optional(),
 });
 
 module.exports = {
