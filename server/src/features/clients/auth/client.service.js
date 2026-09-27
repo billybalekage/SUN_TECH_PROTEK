@@ -213,8 +213,10 @@ async function changePassword(userId, { currentPassword, newPassword }) {
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await authRepository.updateUserPassword(user.id, passwordHash);
-  await authRepository.revokeAllUserRefreshTokens(user.id);
+  await authRepository.changeUserPasswordAndRevokeRefreshTokens(
+    user.id,
+    passwordHash,
+  );
 
   return { message: "Mot de passe modifié avec succès" };
 }
