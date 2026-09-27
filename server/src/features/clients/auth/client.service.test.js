@@ -14,6 +14,7 @@ const mockAuthRepository = {
   invalidateUserOtps: vi.fn(),
   updateUserPassword: vi.fn(),
   revokeAllUserRefreshTokens: vi.fn(),
+  changeUserPasswordAndRevokeRefreshTokens: vi.fn(),
   createRefreshToken: vi.fn(),
   findRefreshToken: vi.fn(),
   rotateRefreshToken: vi.fn(),
@@ -159,6 +160,29 @@ describe("client auth service", () => {
     ).rejects.toThrow("Mot de passe actuel incorrect");
 
     expect(mockAuthRepository.updateUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("updates the password and revokes sessions through one repository operation", async () => {
+    const bcrypt = await import("bcryptjs");
+    mockAuthRepository.findUserById.mockResolvedValue({
+      id: "user-1",
+      isActive: true,
+      passwordHash: await bcrypt.hash("current-password", 4),
+      role: { name: "ELECTRICIEN" },
+    });
+
+    await clientService.changePassword("user-1", {
+      currentPassword: "current-password",
+      newPassword: "new-password",
+    });
+
+    expect(
+      mockAuthRepository.changeUserPasswordAndRevokeRefreshTokens,
+    ).toHaveBeenCalledWith("user-1", expect.any(String));
+    expect(mockAuthRepository.updateUserPassword).not.toHaveBeenCalled();
+    expect(
+      mockAuthRepository.revokeAllUserRefreshTokens,
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects password changes for users outside the electrician role", async () => {

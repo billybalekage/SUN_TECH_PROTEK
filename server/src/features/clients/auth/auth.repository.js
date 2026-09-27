@@ -88,6 +88,19 @@ async function revokeAllUserRefreshTokens(userId) {
   });
 }
 
+async function changeUserPasswordAndRevokeRefreshTokens(userId, passwordHash) {
+  return prisma.$transaction(async (transaction) => {
+    await transaction.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    await transaction.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  });
+}
+
 async function createRefreshToken(data) {
   return prisma.refreshToken.create({ data });
 }
@@ -141,6 +154,7 @@ module.exports = {
   invalidateUserOtps,
   updateUserPassword,
   revokeAllUserRefreshTokens,
+  changeUserPasswordAndRevokeRefreshTokens,
   createRefreshToken,
   findRefreshToken,
   rotateRefreshToken,
