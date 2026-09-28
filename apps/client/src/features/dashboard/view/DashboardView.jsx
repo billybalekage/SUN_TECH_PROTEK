@@ -73,7 +73,7 @@ function DashboardView() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-8 sm:px-8 lg:px-12">
+    <main className="min-h-full bg-muted/30 px-4 py-8 sm:px-8 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>

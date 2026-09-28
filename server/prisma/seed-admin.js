@@ -23,8 +23,8 @@ async function main() {
       email: ADMIN_EMAIL,
       password: ADMIN_PASSWORD,
       fullName: ADMIN_FULL_NAME,
-      company: process.env.ADMIN_COMPANY || null,
-      phone: process.env.ADMIN_PHONE || null,
+      company: process.env.ADMIN_COMPANY,
+      phone: process.env.ADMIN_PHONE,
     });
     console.log(
       result.created

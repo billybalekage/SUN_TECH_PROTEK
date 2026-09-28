@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import AuthError from "./AuthError";
@@ -62,14 +61,6 @@ const ChangePasswordForm = () => {
         >
           {change.isPending ? "Modification..." : "Modifier le mot de passe"}
         </Button>
-        <p className="text-center text-sm text-muted-foreground">
-          <Link
-            to="/dashboard"
-            className="font-medium text-primary hover:underline"
-          >
-            Retour à l’espace
-          </Link>
-        </p>
       </FieldGroup>
     </form>
   );

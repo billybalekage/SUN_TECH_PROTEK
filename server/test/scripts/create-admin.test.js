@@ -65,6 +65,43 @@ describe("createAdmin", () => {
     expect(result.user.passwordHash).toBeUndefined();
   });
 
+  it("treats a P2002 race as repeat-safe when the raced account is an admin", async () => {
+    const uniqueError = Object.assign(new Error("Unique constraint failed"), {
+      code: "P2002",
+    });
+    const racedAdmin = {
+      id: "raced-admin",
+      email: "admin@example.com",
+      passwordHash: "existing-hash",
+      role: { name: "ADMIN" },
+    };
+    prisma.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(racedAdmin);
+    prisma.user.create.mockRejectedValueOnce(uniqueError);
+
+    const result = await createAdmin({ prisma, ...input });
+
+    expect(result).toEqual({
+      created: false,
+      user: {
+        id: "raced-admin",
+        email: "admin@example.com",
+        role: { name: "ADMIN" },
+      },
+    });
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it("propagates unexpected account-creation errors without looking up a duplicate", async () => {
+    const databaseError = new Error("Database unavailable");
+    prisma.user.create.mockRejectedValueOnce(databaseError);
+
+    await expect(createAdmin({ prisma, ...input })).rejects.toBe(databaseError);
+
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses to promote an existing non-administrator account", async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: "existing-user",
