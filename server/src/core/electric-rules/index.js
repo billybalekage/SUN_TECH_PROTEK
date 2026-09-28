@@ -1,4 +1,8 @@
-const { CONVENTIONAL_COEFFICIENT, calculateIccMin } = require("./formulas/Icc");
+const {
+  CONVENTIONAL_COEFFICIENT,
+  calculateIccMin,
+  calculateMaxLengthForIccMin,
+} = require("./formulas/Icc");
 const {
   RESISTIVITY,
   STANDARD_SECTIONS,
@@ -33,6 +37,7 @@ module.exports = {
   // Courant de court-circuit (Icc min, méthode conventionnelle)
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
+  calculateMaxLengthForIccMin,
 
   // Coordination des protections (Ib ≤ In ≤ Iz)
   checkCoordination,

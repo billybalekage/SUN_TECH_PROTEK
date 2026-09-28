@@ -59,12 +59,18 @@ const runCalculationSchema = Joi.object({
   sectionByAmpacity: Joi.number().positive().optional(),
   maxDeltaUPercent: Joi.number().positive().optional(),
   rho: Joi.number().positive().optional(),
+  minimumIcc: Joi.number().positive().optional(),
+  maximumIcc: Joi.number().positive().optional(),
   k1: Joi.number().positive().default(1),
   k2: Joi.number().positive().optional(),
   k3: Joi.number().positive().optional(),
   m: Joi.number().positive().default(1),
   ambientTempCelsius: Joi.number().positive().default(30),
-  conductorMaterial: Joi.string().trim().uppercase().default("CU"),
+  conductorMaterial: Joi.string()
+    .trim()
+    .uppercase()
+    .valid("CU", "AL")
+    .default("CU"),
   usageType: Joi.string().valid("ECLAIRAGE", "AUTRES_USAGES").optional(),
 });
 

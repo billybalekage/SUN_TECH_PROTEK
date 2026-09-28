@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   STANDARD_PROTECTION_RATINGS,
   selectProtectionRating,
-} from "./protection-rating.js";
+} from "../electric-rules/formulas/protection-rating.js";
 
 describe("selectProtectionRating", () => {
   it("exposes the standardized protection ratings", () => {

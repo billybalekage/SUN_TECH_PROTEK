@@ -1,4 +1,4 @@
-const RESISTIVITY = 0.0225;
+const RESISTIVITY = Object.freeze({ COPPER: 0.0172, ALUMINUM: 0.0282 });
 const STANDARD_SECTIONS = [
   1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240,
 ];
@@ -17,14 +17,12 @@ function validateCommonParams({ rho, length, ib, cosPhi, voltage, phaseType }) {
 }
 
 /**
- * Intended to calculate single-phase voltage drop as a percentage of supply
- * voltage; the three-phase branch has no result. This module currently fails
- * to parse, so the function cannot be called.
+ * Calculates voltage drop as a percentage of the supply voltage.
  * @param {object} params
  * @param {number} params.rho - Conductor resistivity in Ω·mm²/m.
  * @param {number} params.length - Cable length in m.
  * @param {number} params.ib - Operating current in amperes.
- * @param {number} params.cosPhi - Power factor; unused in the single-phase expression.
+ * @param {number} params.cosPhi - Power factor used for three-phase circuits.
  * @param {number} params.section - Conductor cross-sectional area in mm².
  * @param {number} params.voltage - Supply voltage in V.
  * @param {"1N"|"3N"} params.phaseType - Single-phase or three-phase circuit.
@@ -73,13 +71,7 @@ function calculateMinSectionByVoltageDrop(
   );
 }
 
-/**
- * Intended to select the smallest standard area at least as large as the
- * requested area. This module cannot currently be parsed, and its
- * standard-section list is undefined.
- *
- * @param {number} value - Conductor cross-sectional area in mm²; must be positive.
- */
+/** Selects the smallest standard section at least as large as the requested area. */
 function roundToStandardSection(value) {
   if (value <= 0) throw new Error("La section à arrondir doit être positive");
   return STANDARD_SECTIONS.find((s) => s >= value) ?? null;

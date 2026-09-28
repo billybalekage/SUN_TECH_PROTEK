@@ -1,29 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Module from "node:module";
-
-const require = Module.createRequire(import.meta.url);
+import installationServiceModule from "./installation.service.js";
 
 const mockRepository = {
   findProjectById: vi.fn(),
   findInstallationByProjectId: vi.fn(),
   createInstallation: vi.fn(),
+  updateInstallation: vi.fn(),
 };
 
-const originalLoad = Module._load;
-Module._load = function patchedLoad(request, parent, isMain) {
-  if (
-    request === "./installation.repository" ||
-    request.endsWith("/installation.repository")
-  ) {
-    return mockRepository;
-  }
+let installationService;
 
-  return originalLoad.apply(this, arguments);
-};
-
-const installationService = require("./installation.service");
-
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  installationService =
+    installationServiceModule.createInstallationService(mockRepository);
+});
 
 describe("installation service", () => {
   it("creates an installation for a project owned by the current user", async () => {
@@ -60,5 +51,30 @@ describe("installation service", () => {
       }),
     ).rejects.toThrow("Vous n'avez pas accès à ce projet");
     expect(mockRepository.createInstallation).not.toHaveBeenCalled();
+  });
+
+  it("updates an installation belonging to the current user", async () => {
+    mockRepository.findProjectById.mockResolvedValue({
+      id: "project-1",
+      ownerId: "user-1",
+    });
+    mockRepository.findInstallationByProjectId.mockResolvedValue({
+      id: "installation-1",
+    });
+    mockRepository.updateInstallation.mockResolvedValue({
+      id: "installation-1",
+      nominalVoltage: 400,
+      circuits: [{ calculationResult: null }],
+    });
+
+    await expect(
+      installationService.updateInstallation("user-1", "project-1", {
+        nominalVoltage: 400,
+      }),
+    ).resolves.toMatchObject({ nominalVoltage: 400 });
+    expect(mockRepository.updateInstallation).toHaveBeenCalledWith(
+      "project-1",
+      { nominalVoltage: 400 },
+    );
   });
 });

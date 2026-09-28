@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Module from "node:module";
-
-const require = Module.createRequire(import.meta.url);
+import circuitServiceModule from "./circuit.service.js";
 
 const mockCircuitRepository = {
   findCircuitById: vi.fn(),
@@ -20,39 +18,25 @@ const mockElectricRules = {
   calculateIb: vi.fn(),
   calculateCorrectedCurrent: vi.fn(),
   selectProtectionRating: vi.fn(),
-  RESISTIVITY: { COPPER: 0.0172 },
+  RESISTIVITY: { COPPER: 0.0172, ALUMINUM: 0.0282 },
   calculateDeltaUPercent: vi.fn(),
   calculateMinSectionByVoltageDrop: vi.fn(),
   roundToStandardSection: vi.fn(),
   selectFinalSection: vi.fn(),
   calculateIccMin: vi.fn(),
+  calculateMaxLengthForIccMin: vi.fn(),
   checkCoordination: vi.fn(),
 };
 
-const originalLoad = Module._load;
-Module._load = function patchedLoad(request, parent, isMain) {
-  if (
-    request === "./circuit.repository" ||
-    request.endsWith("/circuit.repository")
-  ) {
-    return mockCircuitRepository;
-  }
-
-  if (request.endsWith("/core/norms/norm")) {
-    return mockNormService;
-  }
-
-  if (request === "../../core/electric-rules") {
-    return mockElectricRules;
-  }
-
-  return originalLoad.apply(this, arguments);
-};
-
-const circuitService = require("./circuit.service");
+let circuitService;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  circuitService = circuitServiceModule.createCircuitService({
+    circuitRepository: mockCircuitRepository,
+    normService: mockNormService,
+    electricRules: mockElectricRules,
+  });
   mockCircuitRepository.findCircuitById.mockResolvedValue({
     id: "circuit-1",
     circuitType: "ECLAIRAGE",
@@ -129,7 +113,111 @@ describe("runCircuitCalculation normative integration", () => {
       izCurrent: 22.400000000000002,
       baseIz: 28,
       deratingFactors: { k1: 1, k2: 0.8, k3: 1 },
-      isCompliant: true,
+      isCompliant: false,
     });
+    expect(result.reasons).toContain(
+      "Icc,min requis non fourni : la longueur maximale n'est pas vérifiée",
+    );
+    expect(result.reasons).toContain(
+      "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",
+    );
+  });
+
+  it("normalizes accents when inferring the lighting usage", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      circuitType: "Éclairage",
+      numberOfCircuits: 1,
+      totalPower: 2300,
+      cosPhi: 1,
+      farthestLoadDistance: 20,
+      installation: {
+        nominalVoltage: 230,
+        phaseType: "1N",
+        installMode: "B1",
+        insulationType: "PVC",
+        project: { ownerId: "user-1" },
+      },
+    });
+
+    await circuitService.runCircuitCalculation("user-1", "circuit-1");
+
+    expect(mockNormService.getMaxDeltaUPercent).toHaveBeenCalledWith(
+      "ECLAIRAGE",
+    );
+  });
+
+  it("uses aluminum resistivity when the conductor material is AL", async () => {
+    await circuitService.runCircuitCalculation("user-1", "circuit-1", {
+      conductorMaterial: "AL",
+    });
+
+    expect(
+      mockElectricRules.calculateMinSectionByVoltageDrop,
+    ).toHaveBeenCalledWith(0.0282, 20, 10, 1, 230, 3, "1N");
+  });
+
+  it("marks a circuit non-compliant when voltage drop exceeds its limit", async () => {
+    mockElectricRules.calculateDeltaUPercent.mockReturnValueOnce(4);
+
+    const result = await circuitService.runCircuitCalculation(
+      "user-1",
+      "circuit-1",
+    );
+
+    expect(result.isCompliant).toBe(false);
+    expect(result.reasons).toContain(
+      "La chute de tension (4.00%) dépasse la limite (3%)",
+    );
+    expect(mockCircuitRepository.saveCalculationResult).toHaveBeenCalledWith(
+      "circuit-1",
+      expect.objectContaining({ isCompliant: false }),
+    );
+  });
+
+  it("checks maximum cable length, breaking capacity, and TT differential", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      circuitType: "Éclairage",
+      numberOfCircuits: 1,
+      totalPower: 2300,
+      cosPhi: 1,
+      farthestLoadDistance: 20,
+      circuitComponents: [
+        {
+          role: "PROTECTION",
+          component: {
+            breakingCapacity: 3,
+            technicalSpecs: { breakingCapacityUnit: "kA" },
+          },
+        },
+      ],
+      installation: {
+        nominalVoltage: 230,
+        phaseType: "1N",
+        neutralRegime: "TT",
+        installMode: "B1",
+        insulationType: "PVC",
+        project: { ownerId: "user-1" },
+      },
+    });
+    mockElectricRules.calculateMaxLengthForIccMin.mockReturnValue(10);
+
+    const result = await circuitService.runCircuitCalculation(
+      "user-1",
+      "circuit-1",
+      { minimumIcc: 10, maximumIcc: 4000 },
+    );
+
+    expect(result.isCompliant).toBe(false);
+    expect(result.reasons).toContain(
+      "La longueur du circuit (20m) dépasse Lmax (10.00m) pour Icc,min",
+    );
+    expect(result.reasons).toContain(
+      "Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (4000A)",
+    );
+    expect(result.reasons).toContain(
+      "Aucun dispositif différentiel n'est lié au circuit en régime TT",
+    );
   });
 });

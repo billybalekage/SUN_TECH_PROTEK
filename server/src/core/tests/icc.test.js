@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
+  calculateMaxLengthForIccMin,
 } from "../electric-rules/formulas/Icc.js";
 
 const cable = {
@@ -65,6 +66,24 @@ describe("calculateIccMin", () => {
   it("rejects unknown phase types", () => {
     expect(() => calculateIccMin({ ...cable, phaseType: "2N" })).toThrow(
       "Type de phase inconnu : 2N",
+    );
+  });
+});
+
+describe("calculateMaxLengthForIccMin", () => {
+  it("inverts the single-phase minimum short-circuit current formula", () => {
+    const inputs = {
+      voltage: 230,
+      section: 4,
+      rho: 0.0172,
+      minimumIcc: 1000,
+      phaseType: "1N",
+    };
+    const maximumLength = calculateMaxLengthForIccMin(inputs);
+
+    expect(maximumLength).toBeCloseTo((0.8 * 230 * 4) / (0.0172 * 1000 * 2));
+    expect(calculateIccMin({ ...inputs, length: maximumLength })).toBeCloseTo(
+      inputs.minimumIcc,
     );
   });
 });

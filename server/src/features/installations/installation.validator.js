@@ -14,4 +14,21 @@ const createInstallationSchema = Joi.object({
   insulationType: Joi.string().valid("PVC", "PR").required(),
 });
 
-module.exports = { projectIdParamsSchema, createInstallationSchema };
+const updateInstallationSchema = Joi.object({
+  nominalVoltage: Joi.number().positive(),
+  phaseType: Joi.string().valid("1N", "3N"),
+  neutralRegime: Joi.string().valid("TT", "TN", "IT"),
+  networkToTgdDistance: Joi.number().positive().allow(null),
+  installMode: Joi.string().valid("B1", "C"),
+  insulationType: Joi.string().valid("PVC", "PR"),
+})
+  .min(1)
+  .messages({
+    "object.min": "Au moins un champ doit être fourni pour la mise à jour",
+  });
+
+module.exports = {
+  projectIdParamsSchema,
+  createInstallationSchema,
+  updateInstallationSchema,
+};
