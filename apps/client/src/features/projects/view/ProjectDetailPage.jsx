@@ -144,10 +144,10 @@ function ProjectDetailPage() {
                     className="flex flex-wrap items-center justify-between gap-3 py-4"
                   >
                     <div>
-                      <p className="font-medium">{circuit.circuitType}</p>
+                      <p className="font-medium">{circuit.name}</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {circuit.totalPower} W · {circuit.farthestLoadDistance}{" "}
-                        m
+                        {circuit.circuitType} · {circuit.totalPower} W ·{" "}
+                        {circuit.farthestLoadDistance} m
                       </p>
                     </div>
                     <CircuitStatus result={circuit.calculationResult} />

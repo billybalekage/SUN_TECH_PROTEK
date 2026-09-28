@@ -9,6 +9,12 @@ const createCircuitSchema = Joi.object({
     "any.required": "L'identifiant de l'installation est requis",
   }),
 
+  name: Joi.string().trim().min(1).max(100).required().messages({
+    "string.empty": "Le nom du circuit est requis",
+    "string.max": "Le nom du circuit ne peut pas dépasser 100 caractères",
+    "any.required": "Le nom du circuit est requis",
+  }),
+
   circuitType: Joi.string().trim().min(2).max(100).required().messages({
     "string.min": "Le type de circuit doit contenir au moins 2 caractères",
     "any.required": "Le type de circuit est requis",
@@ -41,6 +47,7 @@ const updateCircuitSchema = createCircuitSchema
   .fork(
     [
       "installationId",
+      "name",
       "circuitType",
       "totalPower",
       "farthestLoadDistance",

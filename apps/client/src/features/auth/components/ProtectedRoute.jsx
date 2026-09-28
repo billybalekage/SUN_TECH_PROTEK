@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuthSession } from "../hooks/useAuthSession";
+import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 
 const ProtectedRoute = ({ children }) => {
   const { data, isLoading, isError, error } = useAuthSession();
@@ -28,7 +29,7 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  return children;
+  return <AuthenticatedLayout user={data}>{children}</AuthenticatedLayout>;
 };
 
 export default ProtectedRoute;
