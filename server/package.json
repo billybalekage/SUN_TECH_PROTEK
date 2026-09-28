@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "server": "nodemon server.js",
+    "seed:admin": "node prisma/seed-admin.js",
     "seed:core": "node prisma/seed-norms.js && node prisma/seed-ampacity.js && node prisma/seed-derating-factors.js"
   },
   "dependencies": {
