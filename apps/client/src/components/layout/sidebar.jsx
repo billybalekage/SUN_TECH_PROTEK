@@ -17,7 +17,7 @@ const Sidebar = ({ user }) => {
 
   return (
     <SidebarPrimitive className="top-16 h-[calc(100svh-4rem)]">
-      <SidebarContent className="overflow-hidden">
+      <SidebarContent className="overflow-y-auto">
         {NAVIGATION.map((section) => {
           const items = section.items.filter((item) =>
             item.roles.includes(roleName),
@@ -36,10 +36,10 @@ const Sidebar = ({ user }) => {
                     const Icon = item.icon;
                     const isActive =
                       location.pathname === item.path ||
-                      (item.path === "/projects" &&
-                        location.pathname.startsWith("/projects/") &&
-                        location.pathname !== "/projects/new") ||
-                      location.pathname.startsWith(`${item.path}/`);
+                      (item.path === "/projects"
+                        ? location.pathname.startsWith("/projects/") &&
+                          location.pathname !== "/projects/new"
+                        : location.pathname.startsWith(`${item.path}/`));
                     const label =
                       NAVIGATION_LABELS_FR[item.labelKey] ?? item.labelKey;
 
