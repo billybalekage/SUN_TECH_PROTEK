@@ -36,6 +36,7 @@ function CircuitCalculationPage() {
     createCircuit.mutate(
       {
         installationId: projectQuery.data.installation.id,
+        name: String(formData.get("name")).trim(),
         circuitType: String(formData.get("circuitType")),
         totalPower: Number(formData.get("totalPower")),
         farthestLoadDistance: Number(formData.get("farthestLoadDistance")),
@@ -90,6 +91,15 @@ function CircuitCalculationPage() {
             onSubmit={submitCircuit}
             className="mt-6 grid gap-4 sm:grid-cols-2"
           >
+            <FormInput
+              id="name"
+              name="name"
+              label="Nom du circuit"
+              type="text"
+              maxLength={100}
+              required
+              className="sm:col-span-2"
+            />
             <label
               htmlFor="circuitType"
               className="grid gap-1.5 text-sm font-medium sm:col-span-2"
@@ -167,9 +177,9 @@ function CircuitCalculationPage() {
           <section className="mt-6 space-y-5">
             <div className="flex flex-col gap-3 border-y border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-medium">{createdCircuit.circuitType}</p>
+                <p className="font-medium">{createdCircuit.name}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Circuit prêt pour le calcul.
+                  {createdCircuit.circuitType} · prêt pour le calcul.
                 </p>
               </div>
               <Button
@@ -279,9 +289,12 @@ function ResultValue({ label, value }) {
   );
 }
 
-function FormInput({ id, name, label, ...props }) {
+function FormInput({ id, name, label, className, ...props }) {
   return (
-    <label htmlFor={id} className="grid gap-1.5 text-sm font-medium">
+    <label
+      htmlFor={id}
+      className={`grid gap-1.5 text-sm font-medium ${className ?? ""}`}
+    >
       {label}
       <Input id={id} name={name} className="h-10" {...props} />
     </label>

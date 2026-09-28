@@ -1,0 +1,2 @@
+ALTER TABLE "Circuit"
+ADD COLUMN "name" TEXT NOT NULL DEFAULT 'Circuit';
