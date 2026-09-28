@@ -325,7 +325,12 @@ async function runCircuitCalculation(
     isCompliant: reasons.length === 0,
   };
 
-  await circuitRepository.saveCalculationResult(circuitId, result);
+  await circuitRepository.saveCalculationResult(
+    circuitId,
+    result,
+    installation.id,
+    installation.version,
+  );
 
   return {
     ...result,

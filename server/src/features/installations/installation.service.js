@@ -1,9 +1,12 @@
-const defaultInstallationRepository = require("./installation.repository");
 const {
   ConflictError,
   ForbiddenError,
   NotFoundError,
 } = require("../../common/errors/AppErrors");
+
+function getDefaultInstallationRepository() {
+  return require("./installation.repository");
+}
 
 async function assertProjectAccess(projectId, userId, installationRepository) {
   const project = await installationRepository.findProjectById(projectId);
@@ -18,7 +21,7 @@ async function assertProjectAccess(projectId, userId, installationRepository) {
 async function createInstallation(
   userId,
   data,
-  installationRepository = defaultInstallationRepository,
+  installationRepository = getDefaultInstallationRepository(),
 ) {
   await assertProjectAccess(data.projectId, userId, installationRepository);
 
@@ -35,7 +38,7 @@ async function createInstallation(
 async function getInstallationByProject(
   userId,
   projectId,
-  installationRepository = defaultInstallationRepository,
+  installationRepository = getDefaultInstallationRepository(),
 ) {
   await assertProjectAccess(projectId, userId, installationRepository);
   const installation =
@@ -50,7 +53,7 @@ async function updateInstallation(
   userId,
   projectId,
   data,
-  installationRepository = defaultInstallationRepository,
+  installationRepository = getDefaultInstallationRepository(),
 ) {
   await assertProjectAccess(projectId, userId, installationRepository);
   const installation =
@@ -61,16 +64,21 @@ async function updateInstallation(
   return installationRepository.updateInstallation(projectId, data);
 }
 
-function createInstallationService(
-  installationRepository = defaultInstallationRepository,
-) {
+function createInstallationService(installationRepository) {
+  const repository = installationRepository;
   return {
     createInstallation: (userId, data) =>
-      createInstallation(userId, data, installationRepository),
+      repository
+        ? createInstallation(userId, data, repository)
+        : createInstallation(userId, data),
     getInstallationByProject: (userId, projectId) =>
-      getInstallationByProject(userId, projectId, installationRepository),
+      repository
+        ? getInstallationByProject(userId, projectId, repository)
+        : getInstallationByProject(userId, projectId),
     updateInstallation: (userId, projectId, data) =>
-      updateInstallation(userId, projectId, data, installationRepository),
+      repository
+        ? updateInstallation(userId, projectId, data, repository)
+        : updateInstallation(userId, projectId, data),
   };
 }
 

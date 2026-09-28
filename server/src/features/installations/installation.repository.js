@@ -25,7 +25,7 @@ async function updateInstallation(projectId, data) {
   return prisma.$transaction(async (transaction) => {
     const installation = await transaction.installation.update({
       where: { projectId },
-      data,
+      data: { ...data, version: { increment: 1 } },
     });
     await transaction.calculationResult.deleteMany({
       where: { circuit: { installationId: installation.id } },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import circuitServiceModule from "./circuit.service.js";
+import circuitServiceModule from "../../../src/features/circuits/circuit.service.js";
 
 const mockCircuitRepository = {
   findCircuitById: vi.fn(),
@@ -45,6 +45,8 @@ beforeEach(() => {
     cosPhi: 1,
     farthestLoadDistance: 20,
     installation: {
+      id: "installation-1",
+      version: 7,
       nominalVoltage: 230,
       phaseType: "1N",
       installMode: "B1",
@@ -172,6 +174,8 @@ describe("runCircuitCalculation normative integration", () => {
     expect(mockCircuitRepository.saveCalculationResult).toHaveBeenCalledWith(
       "circuit-1",
       expect.objectContaining({ isCompliant: false }),
+      "installation-1",
+      7,
     );
   });
 

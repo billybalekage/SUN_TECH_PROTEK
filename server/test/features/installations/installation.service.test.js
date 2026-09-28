@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import installationServiceModule from "./installation.service.js";
+import installationServiceModule from "../../../src/features/installations/installation.service.js";
+import {
+  projectIdParamsSchema,
+  updateInstallationSchema,
+} from "../../../src/features/installations/installation.validator.js";
 
 const mockRepository = {
   findProjectById: vi.fn(),
@@ -17,6 +21,33 @@ beforeEach(() => {
 });
 
 describe("installation service", () => {
+  it("can be imported and injected without initializing the database", () => {
+    expect(
+      installationServiceModule.createInstallationService(mockRepository),
+    ).toBeDefined();
+  });
+
+  it("validates PATCH parameters and payloads with Zod", () => {
+    expect(
+      projectIdParamsSchema.safeParse({
+        projectId: "123e4567-e89b-12d3-a456-426614174000",
+      }).success,
+    ).toBe(true);
+    expect(
+      projectIdParamsSchema.safeParse({ projectId: "invalid" }).success,
+    ).toBe(false);
+    expect(
+      updateInstallationSchema.safeParse({
+        nominalVoltage: "400",
+        networkToTgdDistance: null,
+      }).success,
+    ).toBe(true);
+    expect(updateInstallationSchema.safeParse({}).success).toBe(false);
+    expect(
+      updateInstallationSchema.safeParse({ phaseType: "2N" }).success,
+    ).toBe(false);
+  });
+
   it("creates an installation for a project owned by the current user", async () => {
     const payload = {
       projectId: "project-1",

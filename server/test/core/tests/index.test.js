@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import * as electricRules from "../electric-rules/index";
+import * as electricRules from "../../../src/core/electric-rules/index.js";
 
 describe("electric-rules index", () => {
   it("exporte toutes les fonctions attendues", () => {

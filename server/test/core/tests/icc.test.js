@@ -3,7 +3,7 @@ import {
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
   calculateMaxLengthForIccMin,
-} from "../electric-rules/formulas/Icc.js";
+} from "../../../src/core/electric-rules/formulas/Icc.js";
 
 const cable = {
   voltage: 230,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectFinalSection } from "../electric-rules/formulas/section-selection";
+import { selectFinalSection } from "../../../src/core/electric-rules/formulas/section-selection.js";
 
 describe("selectFinalSection", () => {
   it("retient la section la plus grande entre les deux criteres, puis arrondit", () => {

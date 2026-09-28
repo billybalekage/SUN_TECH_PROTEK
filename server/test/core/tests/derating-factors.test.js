@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateCorrectedCurrent } from "../electric-rules/formulas/derating-factors";
+import { calculateCorrectedCurrent } from "../../../src/core/electric-rules/formulas/derating-factors.js";
 
 describe("calculateCorrectedCurrent", () => {
   it("calcule Iz' sans correction (k1=k2=k3)", () => {
