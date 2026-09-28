@@ -13,9 +13,12 @@ import { useProject } from "@/features/projects/viewmodel";
 import { useCalculateCircuit, useCreateCircuit } from "../viewmodel";
 
 function errorMessage(error, fallback) {
+  const validationDetails = error?.response?.data?.details;
+
   return (
     error?.response?.data?.error?.message ??
     error?.response?.data?.message ??
+    (Array.isArray(validationDetails) ? validationDetails.join(" ") : null) ??
     fallback
   );
 }

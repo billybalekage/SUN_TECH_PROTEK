@@ -22,7 +22,7 @@ async function main() {
       prisma,
       email: ADMIN_EMAIL,
       password: ADMIN_PASSWORD,
-      fullName: ADMIN_NAME,
+      fullName: ADMIN_FULL_NAME,
       company: process.env.ADMIN_COMPANY,
       phone: process.env.ADMIN_PHONE,
     });
