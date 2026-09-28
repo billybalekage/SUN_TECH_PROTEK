@@ -49,7 +49,7 @@ Module._load = function patchedLoad(request, parent, isMain) {
   return originalLoad.apply(this, arguments);
 };
 
-const clientService = require("./client.service");
+const clientService = require("../../../../src/features/clients/auth/client.service.js");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -229,7 +229,7 @@ describe("client auth service", () => {
 
   it("rejects a refresh when the token family was already rotated or revoked", async () => {
     const jwt = await import("jsonwebtoken");
-    const { env } = await import("../../../config/env");
+    const { env } = await import("../../../../src/config/env.js");
 
     const refreshToken = jwt.sign(
       { id: "user-1", jti: "token-jti", familyId: "family-1" },

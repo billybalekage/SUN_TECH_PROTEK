@@ -1,7 +1,10 @@
 const Joi = require("joi");
+const { z } = require("zod");
 
-const projectIdParamsSchema = Joi.object({
-  projectId: Joi.string().uuid().required(),
+const projectIdParamsSchema = z.object({
+  projectId: z
+    .string()
+    .uuid("L'identifiant du projet doit être un UUID valide"),
 });
 
 const createInstallationSchema = Joi.object({
@@ -14,4 +17,23 @@ const createInstallationSchema = Joi.object({
   insulationType: Joi.string().valid("PVC", "PR").required(),
 });
 
-module.exports = { projectIdParamsSchema, createInstallationSchema };
+const updateInstallationSchema = z
+  .object({
+    nominalVoltage: z.coerce.number().positive().optional(),
+    phaseType: z.enum(["1N", "3N"]).optional(),
+    neutralRegime: z.enum(["TT", "TN", "IT"]).optional(),
+    networkToTgdDistance: z
+      .union([z.coerce.number().positive(), z.null()])
+      .optional(),
+    installMode: z.enum(["B1", "C"]).optional(),
+    insulationType: z.enum(["PVC", "PR"]).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Au moins un champ doit être fourni pour la mise à jour",
+  });
+
+module.exports = {
+  projectIdParamsSchema,
+  createInstallationSchema,
+  updateInstallationSchema,
+};

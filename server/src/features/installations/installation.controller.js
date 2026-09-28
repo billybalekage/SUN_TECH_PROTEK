@@ -17,4 +17,13 @@ const getByProject = asyncHandler(async (req, res) => {
   return res.status(200).json(installation);
 });
 
-module.exports = { create, getByProject };
+const updateByProject = asyncHandler(async (req, res) => {
+  const installation = await installationService.updateInstallation(
+    req.user.id,
+    req.params.projectId,
+    req.body,
+  );
+  return res.status(200).json(installation);
+});
+
+module.exports = { create, getByProject, updateByProject };

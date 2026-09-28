@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCoordination } from "../electric-rules/rules/coordination.js";
+import { checkCoordination } from "../../../src/core/electric-rules/rules/coordination.js";
 
 describe("checkCoordination", () => {
   it("accepts currents strictly within the protection and cable ratings", () => {

@@ -1,23 +1,15 @@
-const circuitRepository = require("./circuit.repository");
+const defaultCircuitRepository = require("./circuit.repository");
+const defaultElectricRules = require("../../core/electric-rules");
+const defaultNormService = require("../../core/norms/norm");
 const {
   NotFoundError,
   BadRequestError,
 } = require("../../common/errors/AppErrors");
-const {
-  calculateIb,
-  calculateCorrectedCurrent,
-  selectProtectionRating,
-  RESISTIVITY,
-  calculateDeltaUPercent,
-  calculateMinSectionByVoltageDrop,
-  roundToStandardSection,
-  selectFinalSection,
-  calculateIccMin,
-  checkCoordination,
-} = require("../../core/electric-rules");
-const normService = require("../../core/norms/norm");
-
-async function createCircuit(userId, data) {
+async function createCircuit(
+  userId,
+  data,
+  circuitRepository = defaultCircuitRepository,
+) {
   const installation = await circuitRepository.findInstallationById(
     data.installationId,
   );
@@ -30,7 +22,11 @@ async function createCircuit(userId, data) {
   return circuitRepository.createCircuit(data);
 }
 
-async function getCircuit(userId, circuitId) {
+async function getCircuit(
+  userId,
+  circuitId,
+  circuitRepository = defaultCircuitRepository,
+) {
   const circuit = await circuitRepository.findCircuitById(circuitId);
   if (!circuit || circuit.installation?.project?.ownerId !== userId) {
     throw new NotFoundError(`Circuit introuvable : ${circuitId}`);
@@ -39,7 +35,11 @@ async function getCircuit(userId, circuitId) {
   return circuit;
 }
 
-async function listCircuitsByInstallation(userId, installationId) {
+async function listCircuitsByInstallation(
+  userId,
+  installationId,
+  circuitRepository = defaultCircuitRepository,
+) {
   const installation =
     await circuitRepository.findInstallationById(installationId);
   if (!installation || installation.project.ownerId !== userId) {
@@ -49,27 +49,38 @@ async function listCircuitsByInstallation(userId, installationId) {
   return circuitRepository.findCircuitsByInstallation(installationId);
 }
 
-async function updateCircuit(userId, circuitId, data) {
-  await getCircuit(userId, circuitId);
+async function updateCircuit(
+  userId,
+  circuitId,
+  data,
+  circuitRepository = defaultCircuitRepository,
+) {
+  await getCircuit(userId, circuitId, circuitRepository);
   return circuitRepository.updateCircuit(circuitId, data);
 }
 
-async function deleteCircuit(userId, circuitId) {
-  await getCircuit(userId, circuitId);
+async function deleteCircuit(
+  userId,
+  circuitId,
+  circuitRepository = defaultCircuitRepository,
+) {
+  await getCircuit(userId, circuitId, circuitRepository);
   return circuitRepository.deleteCircuit(circuitId);
 }
 
 /**
  * Dimensionne un circuit accessible à l'utilisateur et enregistre son résultat.
  * Déduit le calibre de protection, la section et l'intensité admissible des
- * tables normatives ; isCompliant et reasons reflètent Ib ≤ In ≤ Iz corrigé.
+ * tables normatives ; la conformité inclut la coordination et la chute de tension.
  * @param {string} userId - Identifiant du propriétaire du projet.
  * @param {string} circuitId - Identifiant du circuit à calculer.
  * @param {object} [options={}] - Paramètres complémentaires du calcul.
  * @param {number} [options.izCurrent] - Intensité admissible corrigée en A; sinon déduite des tables.
  * @param {number} [options.sectionByAmpacity] - Section minimale personnalisée en mm²; sinon déduite des tables.
  * @param {number} [options.maxDeltaUPercent] - Seuil personnalisé; sinon récupéré selon l'usage.
- * @param {number} [options.rho=RESISTIVITY.COPPER] - Résistivité en Ω·mm²/m.
+ * @param {number} [options.minimumIcc] - Seuil de déclenchement en A pour le contrôle de Lmax.
+ * @param {number} [options.maximumIcc] - Icc,max réseau en A.
+ * @param {number} [options.rho] - Résistivité explicite en Ω·mm²/m.
  * @param {number} [options.k1=1] - Facteur complémentaire; l'installation est déjà intégrée à la table d'ampacité.
  * @param {number} [options.k2] - Override facultatif du facteur de groupement normatif.
  * @param {number} [options.k3] - Override facultatif du facteur de température normatif.
@@ -77,17 +88,42 @@ async function deleteCircuit(userId, circuitId) {
  * @param {string} [options.conductorMaterial=CU] - Matériau du conducteur.
  * @param {string} [options.usageType] - Usage normatif; déduit de circuitType si absent.
  * @param {number} [options.m=1] - Rapport de section phase/neutre pour le calcul de court-circuit.
+ * @param {object} [dependencies] - Dépôt et services injectables pour les tests.
  * @returns {Promise<{ib: number, deltaUPercent: number, sectionMm2: number, inCurrent: number, izCurrent: number, icc: number, isCompliant: boolean, reasons: string[]}>} Résultat enregistré et motifs de non-coordination.
  * @throws {NotFoundError} Si le circuit est absent ou inaccessible à l'utilisateur.
  * @throws {BadRequestError} Si les données requises pour sélectionner une ampacité normative manquent.
  * @throws {Error} Si une formule rejette ses paramètres.
  */
-async function runCircuitCalculation(userId, circuitId, options = {}) {
+async function runCircuitCalculation(
+  userId,
+  circuitId,
+  options = {},
+  dependencies = {},
+) {
+  const circuitRepository =
+    dependencies.circuitRepository ?? defaultCircuitRepository;
+  const normService = dependencies.normService ?? defaultNormService;
+  const electricRules = dependencies.electricRules ?? defaultElectricRules;
+  const {
+    calculateIb,
+    calculateCorrectedCurrent,
+    selectProtectionRating,
+    calculateDeltaUPercent,
+    calculateMinSectionByVoltageDrop,
+    roundToStandardSection,
+    selectFinalSection,
+    RESISTIVITY,
+    calculateIccMin,
+    calculateMaxLengthForIccMin,
+    checkCoordination,
+  } = electricRules;
   const {
     izCurrent: providedIzCurrent,
     sectionByAmpacity,
     maxDeltaUPercent: providedMaxDeltaUPercent,
-    rho = RESISTIVITY.COPPER,
+    minimumIcc,
+    maximumIcc,
+    rho: providedRho,
     k1 = 1,
     k2: providedK2,
     k3: providedK3,
@@ -97,7 +133,7 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     usageType: providedUsageType,
   } = options;
 
-  const circuit = await getCircuit(userId, circuitId);
+  const circuit = await getCircuit(userId, circuitId, circuitRepository);
 
   const installation = circuit.installation;
   if (!installation) {
@@ -121,11 +157,18 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     );
   }
 
+  const normalizedCircuitType = circuit.circuitType
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
   const normalizedUsageType =
     providedUsageType ??
-    (circuit.circuitType.toUpperCase().includes("ECLAIRAGE")
+    (normalizedCircuitType.includes("ECLAIRAGE")
       ? "ECLAIRAGE"
       : "AUTRES_USAGES");
+  const rho =
+    providedRho ??
+    (conductorMaterial === "AL" ? RESISTIVITY.ALUMINUM : RESISTIVITY.COPPER);
   const maxDeltaUPercent =
     providedMaxDeltaUPercent ??
     (await normService.getMaxDeltaUPercent(normalizedUsageType));
@@ -160,15 +203,15 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
   }
 
   // 2. Section minimale par critère de chute de tension
-  const sectionByVoltageDrop = calculateMinSectionByVoltageDrop({
+  const sectionByVoltageDrop = calculateMinSectionByVoltageDrop(
     rho,
-    length: circuit.farthestLoadDistance,
+    circuit.farthestLoadDistance,
     ib,
-    cosPhi: circuit.cosPhi,
-    voltage: installation.nominalVoltage,
+    circuit.cosPhi,
+    installation.nominalVoltage,
     maxDeltaUPercent,
-    phaseType: installation.phaseType,
-  });
+    installation.phaseType,
+  );
 
   // 3. Section finale retenue
   const section = requiredSectionByAmpacity
@@ -204,6 +247,57 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     m,
     phaseType: installation.phaseType,
   });
+  const reasons = [];
+  if (minimumIcc === undefined) {
+    reasons.push(
+      "Icc,min requis non fourni : la longueur maximale n'est pas vérifiée",
+    );
+  } else {
+    const maximumLength = calculateMaxLengthForIccMin({
+      voltage: installation.nominalVoltage,
+      section,
+      rho,
+      minimumIcc,
+      m,
+      phaseType: installation.phaseType,
+    });
+    if (circuit.farthestLoadDistance > maximumLength) {
+      reasons.push(
+        `La longueur du circuit (${circuit.farthestLoadDistance}m) dépasse Lmax (${maximumLength.toFixed(2)}m) pour Icc,min`,
+      );
+    }
+  }
+
+  const protectionComponents = (circuit.circuitComponents ?? [])
+    .filter(({ role }) => role === "PROTECTION")
+    .map(({ component }) => component);
+  if (maximumIcc === undefined) {
+    reasons.push(
+      "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",
+    );
+  } else if (
+    !protectionComponents.some((component) => {
+      const capacity = Number(component.breakingCapacity);
+      const unit = component.technicalSpecs?.breakingCapacityUnit;
+      const capacityAmps =
+        unit === "A" ? capacity : unit === "kA" ? capacity * 1000 : null;
+      return capacityAmps !== null && capacityAmps >= maximumIcc;
+    })
+  ) {
+    reasons.push(
+      `Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (${maximumIcc}A)`,
+    );
+  }
+  if (
+    installation.neutralRegime === "TT" &&
+    !(circuit.circuitComponents ?? []).some(
+      ({ role }) => role === "DIFFERENTIAL",
+    )
+  ) {
+    reasons.push(
+      "Aucun dispositif différentiel n'est lié au circuit en régime TT",
+    );
+  }
 
   // 6. Intensité admissible corrigée et coordination des protections
   const baseIz = await normService.getBaseAmpacity({
@@ -214,6 +308,12 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
   });
   const izCurrent = providedIzCurrent ?? baseIz * k1 * k2 * k3;
   const coordination = checkCoordination({ ib, inCurrent, iz: izCurrent });
+  reasons.push(...coordination.reasons);
+  if (deltaUPercent > maxDeltaUPercent) {
+    reasons.push(
+      `La chute de tension (${deltaUPercent.toFixed(2)}%) dépasse la limite (${maxDeltaUPercent}%)`,
+    );
+  }
 
   const result = {
     ib,
@@ -222,24 +322,47 @@ async function runCircuitCalculation(userId, circuitId, options = {}) {
     inCurrent,
     izCurrent,
     icc,
-    isCompliant: coordination.isCompliant,
+    isCompliant: reasons.length === 0,
   };
 
-  await circuitRepository.saveCalculationResult(circuitId, result);
+  await circuitRepository.saveCalculationResult(
+    circuitId,
+    result,
+    installation.id,
+    installation.version,
+  );
 
   return {
     ...result,
-    reasons: coordination.reasons,
+    reasons,
     baseIz,
     deratingFactors: { k1, k2, k3 },
   };
 }
 
-module.exports = {
-  createCircuit,
-  getCircuit,
-  listCircuitsByInstallation,
-  updateCircuit,
-  deleteCircuit,
-  runCircuitCalculation,
-};
+function createCircuitService({
+  circuitRepository = defaultCircuitRepository,
+  normService = defaultNormService,
+  electricRules = defaultElectricRules,
+} = {}) {
+  return {
+    createCircuit: (userId, data) =>
+      createCircuit(userId, data, circuitRepository),
+    getCircuit: (userId, circuitId) =>
+      getCircuit(userId, circuitId, circuitRepository),
+    listCircuitsByInstallation: (userId, installationId) =>
+      listCircuitsByInstallation(userId, installationId, circuitRepository),
+    updateCircuit: (userId, circuitId, data) =>
+      updateCircuit(userId, circuitId, data, circuitRepository),
+    deleteCircuit: (userId, circuitId) =>
+      deleteCircuit(userId, circuitId, circuitRepository),
+    runCircuitCalculation: (userId, circuitId, options) =>
+      runCircuitCalculation(userId, circuitId, options, {
+        circuitRepository,
+        normService,
+        electricRules,
+      }),
+  };
+}
+
+module.exports = { ...createCircuitService(), createCircuitService };

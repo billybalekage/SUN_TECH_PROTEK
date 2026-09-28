@@ -6,6 +6,7 @@ const installationController = require("./installation.controller");
 const {
   createInstallationSchema,
   projectIdParamsSchema,
+  updateInstallationSchema,
 } = require("./installation.validator");
 
 const installation = express.Router();
@@ -21,6 +22,12 @@ installation.get(
   "/project/:projectId",
   validate(projectIdParamsSchema, "params"),
   installationController.getByProject,
+);
+installation.patch(
+  "/project/:projectId",
+  validate(projectIdParamsSchema, "params"),
+  validate(updateInstallationSchema),
+  installationController.updateByProject,
 );
 
 module.exports = installation;

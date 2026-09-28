@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateIb } from "../electric-rules/formulas/Ib.js";
+import { calculateIb } from "../../../src/core/electric-rules/formulas/Ib.js";
 
 describe("calculateIb", () => {
   it("calculates single-phase operating current", () => {

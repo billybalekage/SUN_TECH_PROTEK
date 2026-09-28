@@ -4,7 +4,7 @@ import {
   calculateDeltaUPercent,
   calculateMinSectionByVoltageDrop,
   roundToStandardSection,
-} from "../electric-rules/formulas/chute-tension.js";
+} from "../../../src/core/electric-rules/formulas/chute-tension.js";
 
 const cable = {
   rho: 0.0225,
@@ -26,9 +26,7 @@ describe("calculateDeltaUPercent", () => {
   it("calculates three-phase drop with the power factor and square-root-of-three", () => {
     expect(
       calculateDeltaUPercent({ ...cable, voltage: 400, phaseType: "3N" }),
-    ).toBeCloseTo(
-      (Math.sqrt(3) * 0.0225 * 20 * 10 * 0.8 * 100) / (2.5 * 400),
-    );
+    ).toBeCloseTo((Math.sqrt(3) * 0.0225 * 20 * 10 * 0.8 * 100) / (2.5 * 400));
   });
 
   it("decreases when the conductor section doubles", () => {
@@ -51,7 +49,9 @@ describe("calculateDeltaUPercent", () => {
   });
 
   it("rejects unrecognized phase types", () => {
-    expect(() => calculateDeltaUPercent({ ...cable, phaseType: "2N" })).toThrow();
+    expect(() =>
+      calculateDeltaUPercent({ ...cable, phaseType: "2N" }),
+    ).toThrow();
   });
 });
 

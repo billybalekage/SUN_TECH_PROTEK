@@ -19,7 +19,7 @@ Module._load = function patchedLoad(request, parent, isMain) {
   return originalLoad.apply(this, arguments);
 };
 
-const dashboardService = require("./dashboard.service");
+const dashboardService = require("../../../../src/features/clients/dashboard/dashboard.service.js");
 
 beforeEach(() => {
   vi.clearAllMocks();

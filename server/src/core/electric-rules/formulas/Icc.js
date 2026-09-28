@@ -45,4 +45,38 @@ function calculateIccMin({ voltage, section, length, rho, m = 1, phaseType }) {
   throw new Error(`Type de phase inconnu : ${phaseType}`);
 }
 
-module.exports = { CONVENTIONAL_COEFFICIENT, calculateIccMin };
+/** Calculates the maximum cable length that preserves the required Icc,min. */
+function calculateMaxLengthForIccMin({
+  voltage,
+  section,
+  rho,
+  minimumIcc,
+  m = 1,
+  phaseType,
+}) {
+  validatePositive(voltage, "U");
+  validatePositive(section, "S");
+  validatePositive(rho, "rho");
+  validatePositive(minimumIcc, "Icc,min requis");
+  validatePositive(m, "m");
+
+  if (phaseType === "1N") {
+    return (
+      (CONVENTIONAL_COEFFICIENT * voltage * section) /
+      (rho * minimumIcc * (1 + m))
+    );
+  }
+  if (phaseType === "3N") {
+    return (
+      (CONVENTIONAL_COEFFICIENT * voltage * section) /
+      (rho * minimumIcc * Math.sqrt(3))
+    );
+  }
+  throw new Error(`Type de phase inconnu : ${phaseType}`);
+}
+
+module.exports = {
+  CONVENTIONAL_COEFFICIENT,
+  calculateIccMin,
+  calculateMaxLengthForIccMin,
+};

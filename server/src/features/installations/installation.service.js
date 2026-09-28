@@ -1,11 +1,14 @@
-const installationRepository = require("./installation.repository");
 const {
   ConflictError,
   ForbiddenError,
   NotFoundError,
 } = require("../../common/errors/AppErrors");
 
-async function assertProjectAccess(projectId, userId) {
+function getDefaultInstallationRepository() {
+  return require("./installation.repository");
+}
+
+async function assertProjectAccess(projectId, userId, installationRepository) {
   const project = await installationRepository.findProjectById(projectId);
   if (!project) {
     throw new NotFoundError(`Projet introuvable : ${projectId}`);
@@ -15,8 +18,12 @@ async function assertProjectAccess(projectId, userId) {
   }
 }
 
-async function createInstallation(userId, data) {
-  await assertProjectAccess(data.projectId, userId);
+async function createInstallation(
+  userId,
+  data,
+  installationRepository = getDefaultInstallationRepository(),
+) {
+  await assertProjectAccess(data.projectId, userId, installationRepository);
 
   const existing = await installationRepository.findInstallationByProjectId(
     data.projectId,
@@ -28,8 +35,12 @@ async function createInstallation(userId, data) {
   return installationRepository.createInstallation(data);
 }
 
-async function getInstallationByProject(userId, projectId) {
-  await assertProjectAccess(projectId, userId);
+async function getInstallationByProject(
+  userId,
+  projectId,
+  installationRepository = getDefaultInstallationRepository(),
+) {
+  await assertProjectAccess(projectId, userId, installationRepository);
   const installation =
     await installationRepository.findInstallationByProjectId(projectId);
   if (!installation) {
@@ -38,4 +49,37 @@ async function getInstallationByProject(userId, projectId) {
   return installation;
 }
 
-module.exports = { createInstallation, getInstallationByProject };
+async function updateInstallation(
+  userId,
+  projectId,
+  data,
+  installationRepository = getDefaultInstallationRepository(),
+) {
+  await assertProjectAccess(projectId, userId, installationRepository);
+  const installation =
+    await installationRepository.findInstallationByProjectId(projectId);
+  if (!installation) {
+    throw new NotFoundError("Aucune installation pour ce projet");
+  }
+  return installationRepository.updateInstallation(projectId, data);
+}
+
+function createInstallationService(installationRepository) {
+  const repository = installationRepository;
+  return {
+    createInstallation: (userId, data) =>
+      repository
+        ? createInstallation(userId, data, repository)
+        : createInstallation(userId, data),
+    getInstallationByProject: (userId, projectId) =>
+      repository
+        ? getInstallationByProject(userId, projectId, repository)
+        : getInstallationByProject(userId, projectId),
+    updateInstallation: (userId, projectId, data) =>
+      repository
+        ? updateInstallation(userId, projectId, data, repository)
+        : updateInstallation(userId, projectId, data),
+  };
+}
+
+module.exports = { ...createInstallationService(), createInstallationService };

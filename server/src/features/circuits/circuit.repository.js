@@ -1,4 +1,5 @@
 const prisma = require("../../config/database");
+const { ConflictError } = require("../../common/errors/AppErrors");
 
 async function findInstallationById(id) {
   return prisma.installation.findUnique({
@@ -51,11 +52,28 @@ async function deleteCircuit(id) {
  * Enregistre (ou remplace) le résultat de calcul d'un circuit.
  * Upsert car un circuit n'a qu'un seul résultat (relation 1:1).
  */
-async function saveCalculationResult(circuitId, resultData) {
-  return prisma.calculationResult.upsert({
-    where: { circuitId },
-    create: { circuitId, ...resultData },
-    update: resultData,
+async function saveCalculationResult(
+  circuitId,
+  resultData,
+  installationId,
+  expectedVersion,
+) {
+  return prisma.$transaction(async (transaction) => {
+    const versionUpdate = await transaction.installation.updateMany({
+      where: { id: installationId, version: expectedVersion },
+      data: { version: { increment: 1 } },
+    });
+    if (versionUpdate.count !== 1) {
+      throw new ConflictError(
+        "L'installation a été modifiée pendant le calcul; relancez le calcul",
+      );
+    }
+
+    return transaction.calculationResult.upsert({
+      where: { circuitId },
+      create: { circuitId, ...resultData },
+      update: resultData,
+    });
   });
 }
 

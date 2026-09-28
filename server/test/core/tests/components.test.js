@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  COMPONENT_TYPES,
-  createComponentService,
-} = await import("../components/service.js");
+const { COMPONENT_TYPES, createComponentService } =
+  await import("../../../src/core/components/service.js");
 
 describe("matchCommercialComponents", () => {
   let findByType;
@@ -13,9 +11,21 @@ describe("matchCommercialComponents", () => {
     findByType = vi.fn(async (type) => {
       if (type === COMPONENT_TYPES.PROTECTION) {
         return [
-          { reference: "BREAKER-16-6", ratedCurrent: "16", breakingCapacity: "6" },
-          { reference: "BREAKER-20-6", ratedCurrent: "20", breakingCapacity: "6" },
-          { reference: "BREAKER-16-3", ratedCurrent: "16", breakingCapacity: "3" },
+          {
+            reference: "BREAKER-16-6",
+            ratedCurrent: "16",
+            breakingCapacity: "6",
+          },
+          {
+            reference: "BREAKER-20-6",
+            ratedCurrent: "20",
+            breakingCapacity: "6",
+          },
+          {
+            reference: "BREAKER-16-3",
+            ratedCurrent: "16",
+            breakingCapacity: "3",
+          },
         ];
       }
       return [
