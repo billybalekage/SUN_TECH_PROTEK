@@ -77,8 +77,15 @@ describe("installation service", () => {
       updateInstallationSchema.safeParse({
         nominalVoltage: "400",
         networkToTgdDistance: null,
+        maximumIcc: "6000",
       }).success,
     ).toBe(true);
+    expect(
+      updateInstallationSchema.safeParse({ maximumIcc: null }).success,
+    ).toBe(true);
+    expect(
+      updateInstallationSchema.safeParse({ maximumIcc: "0" }).success,
+    ).toBe(false);
     expect(updateInstallationSchema.safeParse({}).success).toBe(false);
     expect(
       updateInstallationSchema.safeParse({ phaseType: "2N" }).success,

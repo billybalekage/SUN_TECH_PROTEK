@@ -1,10 +1,10 @@
-const Joi = require("joi");
+const { z } = require("zod");
 
-const idParamSchema = Joi.object({
-  id: Joi.string().uuid().required(),
+const idParamSchema = z.object({
+  id: z.string().uuid(),
 });
-const installationIdParamSchema = Joi.object({
-  installationId: Joi.string().uuid().required(),
+const installationIdParamSchema = z.object({
+  installationId: z.string().uuid(),
 });
 
 const USAGE_LOCATIONS = [
@@ -17,88 +17,73 @@ const USAGE_LOCATIONS = [
   "AUTRES",
 ];
 
-const createCircuitSchema = Joi.object({
-  installationId: Joi.string().uuid().required().messages({
-    "string.uuid": "L'identifiant de l'installation doit être un UUID valide",
-    "any.required": "L'identifiant de l'installation est requis",
-  }),
+const circuitFields = {
+  installationId: z
+    .string()
+    .uuid("L'identifiant de l'installation doit être un UUID valide"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Le nom du circuit est requis")
+    .max(100, "Le nom du circuit ne peut pas dépasser 100 caractères"),
+  circuitType: z
+    .string()
+    .trim()
+    .min(2, "Le type de circuit doit contenir au moins 2 caractères")
+    .max(100),
+  totalPower: z.coerce
+    .number()
+    .positive("La puissance totale doit être positive"),
+  farthestLoadDistance: z.coerce
+    .number()
+    .positive("La distance de la charge la plus éloignée doit être positive"),
+  cosPhi: z.coerce
+    .number()
+    .gt(0, "cosPhi doit être strictement supérieur à 0")
+    .max(1, "cosPhi ne peut pas dépasser 1"),
+  numberOfCircuits: z.coerce.number().int().min(1),
+  usageLocation: z.enum(USAGE_LOCATIONS).optional(),
+  breakerTripCurve: z.enum(["B", "C", "D"]).nullable().optional(),
+};
 
-  name: Joi.string().trim().min(1).max(100).required().messages({
-    "string.empty": "Le nom du circuit est requis",
-    "string.max": "Le nom du circuit ne peut pas dépasser 100 caractères",
-    "any.required": "Le nom du circuit est requis",
-  }),
-
-  circuitType: Joi.string().trim().min(2).max(100).required().messages({
-    "string.min": "Le type de circuit doit contenir au moins 2 caractères",
-    "any.required": "Le type de circuit est requis",
-  }),
-
-  totalPower: Joi.number().positive().required().messages({
-    "number.positive": "La puissance totale doit être positive",
-    "any.required": "La puissance totale est requise",
-  }),
-
-  farthestLoadDistance: Joi.number().positive().required().messages({
-    "number.positive":
-      "La distance de la charge la plus éloignée doit être positive",
-    "any.required": "La distance de la charge la plus éloignée est requise",
-  }),
-
-  cosPhi: Joi.number().greater(0).max(1).default(0.8).messages({
-    "number.greater": "cosPhi doit être strictement supérieur à 0",
-    "number.max": "cosPhi ne peut pas dépasser 1",
-  }),
-
-  numberOfCircuits: Joi.number().integer().min(1).default(1).messages({
-    "number.min": "Le nombre de circuits doit être au moins 1",
-  }),
-
-  usageLocation: Joi.string()
-    .valid(...USAGE_LOCATIONS)
-    .optional(),
-
-  breakerTripCurve: Joi.string().valid("B", "C", "D").allow(null).optional(),
+const createCircuitSchema = z.object({
+  ...circuitFields,
+  cosPhi: circuitFields.cosPhi.default(0.8),
+  numberOfCircuits: circuitFields.numberOfCircuits.default(1),
 });
 
-// Pour une mise à jour partielle : tous les champs deviennent optionnels,
-// mais au moins un doit être présent
-const updateCircuitSchema = createCircuitSchema
-  .fork(
-    [
-      "installationId",
-      "name",
-      "circuitType",
-      "totalPower",
-      "farthestLoadDistance",
-      "cosPhi",
-      "numberOfCircuits",
-    ],
-    (schema) => schema.optional(),
+const updateCircuitSchema = z
+  .object(
+    Object.fromEntries(
+      Object.entries(circuitFields).map(([key, schema]) => [
+        key,
+        schema.optional(),
+      ]),
+    ),
   )
-  .min(1)
-  .messages({
-    "object.min": "Au moins un champ doit être fourni pour la mise à jour",
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Au moins un champ doit être fourni pour la mise à jour",
   });
 
-const runCalculationSchema = Joi.object({
-  izCurrent: Joi.number().positive().optional(),
-  sectionByAmpacity: Joi.number().positive().optional(),
-  maxDeltaUPercent: Joi.number().positive().optional(),
-  rho: Joi.number().positive().optional(),
-  minimumIcc: Joi.number().positive().optional(),
-  maximumIcc: Joi.number().positive().optional(),
-  k1: Joi.number().positive().default(1),
-  k2: Joi.number().positive().optional(),
-  k3: Joi.number().positive().optional(),
-  m: Joi.number().positive().default(1),
-  ambientTempCelsius: Joi.number().positive().default(30),
-  conductorMaterial: Joi.string()
+const runCalculationSchema = z.object({
+  izCurrent: z.coerce.number().positive().optional(),
+  sectionByAmpacity: z.coerce.number().positive().optional(),
+  maxDeltaUPercent: z.coerce.number().positive().optional(),
+  rho: z.coerce.number().positive().optional(),
+  minimumIcc: z.coerce.number().positive().optional(),
+  maximumIcc: z.coerce.number().positive().optional(),
+  k1: z.coerce.number().positive().default(1),
+  k2: z.coerce.number().positive().optional(),
+  k3: z.coerce.number().positive().optional(),
+  m: z.coerce.number().positive().default(1),
+  ambientTempCelsius: z.coerce.number().positive().default(30),
+  conductorMaterial: z
+    .string()
     .trim()
     .uppercase()
-    .valid("CU", "AL")
+    .pipe(z.enum(["CU", "AL"]))
     .default("CU"),
-  usageType: Joi.string().valid("ECLAIRAGE", "AUTRES_USAGES").optional(),
+  usageType: z.enum(["ECLAIRAGE", "AUTRES_USAGES"]).optional(),
 });
 
 module.exports = {
