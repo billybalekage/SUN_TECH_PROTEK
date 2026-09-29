@@ -20,6 +20,7 @@ const clientDashboardRoutes = require("../features/clients/dashboard/dashboard.r
 const projectRoutes = require("../features/projects/routes/project.route");
 const installationRoutes = require("../features/installations/installation.routes");
 const differentialDeviceRoutes = require("../features/installations/differential-device.routes");
+const reportsRoutes = require("../features/reports/reports.routes");
 
 const createApp = () => {
   const app = express();
@@ -131,6 +132,7 @@ const createApp = () => {
   app.use("/api/v1/clients", clientRoutes);
   app.use("/api/v1/clients/dashboard", clientDashboardRoutes);
   app.use("/api/v1/projects", projectRoutes);
+  app.use("/api/v1/reports", reportsRoutes);
   app.use("/api/v1/differential-devices", differentialDeviceRoutes);
 
   app.use(notFound);

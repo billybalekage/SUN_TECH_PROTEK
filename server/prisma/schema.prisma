@@ -93,15 +93,16 @@ model NormRule {
 }
 
 model Project {
-    id         String   @id @default(uuid())
-    ownerId    String
-    owner      User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-    clientName String
-    address    String?
-    contact    String?
-    status     String   @default("DRAFT")
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+    id          String    @id @default(uuid())
+    ownerId     String
+    owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+    clientName  String
+    address     String?
+    contact     String?
+    status      String    @default("DRAFT")
+    validatedAt DateTime?
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
 
     installation Installation?
 }
@@ -115,6 +116,7 @@ model Installation {
     phaseType            String
     neutralRegime        String
     networkToTgdDistance Decimal? @db.Decimal(10, 2)
+    maximumIcc           Decimal? @db.Decimal(10, 2)
     installMode          String?
     insulationType       String?
 
@@ -152,6 +154,7 @@ model Circuit {
     farthestLoadDistance Decimal             @db.Decimal(10, 2)
     cosPhi               Decimal             @default(0.8) @db.Decimal(4, 3)
     numberOfCircuits     Int                 @default(1)
+    breakerTripCurve     String?
     createdAt            DateTime            @default(now())
     validatedAt          DateTime?
 

@@ -105,6 +105,7 @@ async function updateCircuit(id, data) {
     "cosPhi",
     "numberOfCircuits",
     "usageLocation",
+    "breakerTripCurve",
   ];
   const requiresRecalculation = calculationFields.some((field) =>
     Object.hasOwn(data, field),
@@ -224,6 +225,16 @@ async function saveCalculationResult(
     }
 
     if (differentialDeviceRating) {
+      const currentRating = await transaction.differentialDevice.findUnique({
+        where: { id: differentialDeviceRating.id },
+        select: { sensitivityMa: true, type: true, ratedCurrent: true },
+      });
+      const ratingChanged =
+        currentRating?.sensitivityMa !==
+          differentialDeviceRating.sensitivityMa ||
+        currentRating?.type !== differentialDeviceRating.type ||
+        currentRating?.ratedCurrent !== differentialDeviceRating.ratedCurrent;
+
       await transaction.differentialDevice.update({
         where: { id: differentialDeviceRating.id },
         data: {
@@ -232,11 +243,13 @@ async function saveCalculationResult(
           ratedCurrent: differentialDeviceRating.ratedCurrent,
         },
       });
-      await invalidateDifferentialDeviceCircuits(
-        transaction,
-        differentialDeviceRating.id,
-        circuitId,
-      );
+      if (ratingChanged) {
+        await invalidateDifferentialDeviceCircuits(
+          transaction,
+          differentialDeviceRating.id,
+          circuitId,
+        );
+      }
     }
 
     await transaction.circuit.update({

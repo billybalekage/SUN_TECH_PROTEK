@@ -38,11 +38,22 @@ describe("installation service", () => {
         installMode: "B1",
         insulationType: "PVC",
         generalProtectionType: "A",
+        maximumIcc: "6000",
       }),
     ).toMatchObject({
       success: true,
-      data: { generalProtectionType: "A" },
+      data: { generalProtectionType: "A", maximumIcc: 6000 },
     });
+    expect(
+      createInstallationSchema.safeParse({
+        projectId: "123e4567-e89b-12d3-a456-426614174000",
+        nominalVoltage: 230,
+        phaseType: "1N",
+        neutralRegime: "TT",
+        installMode: "B1",
+        insulationType: "PVC",
+      }).success,
+    ).toBe(true);
     expect(
       createInstallationSchema.safeParse({
         projectId: "123e4567-e89b-12d3-a456-426614174000",
@@ -66,8 +77,15 @@ describe("installation service", () => {
       updateInstallationSchema.safeParse({
         nominalVoltage: "400",
         networkToTgdDistance: null,
+        maximumIcc: "6000",
       }).success,
     ).toBe(true);
+    expect(
+      updateInstallationSchema.safeParse({ maximumIcc: null }).success,
+    ).toBe(true);
+    expect(
+      updateInstallationSchema.safeParse({ maximumIcc: "0" }).success,
+    ).toBe(false);
     expect(updateInstallationSchema.safeParse({}).success).toBe(false);
     expect(
       updateInstallationSchema.safeParse({ phaseType: "2N" }).success,
@@ -76,6 +94,42 @@ describe("installation service", () => {
       updateInstallationSchema.safeParse({ generalProtectionRating: 40 })
         .success,
     ).toBe(false);
+  });
+
+  it.each([6000, "6000", null])(
+    "passes maximumIcc=%s from PATCH validation to persistence",
+    async (maximumIcc) => {
+      const payload = updateInstallationSchema.parse({ maximumIcc });
+      const expected = { maximumIcc: maximumIcc === null ? null : 6000 };
+      expect(payload).toEqual(expected);
+      mockRepository.findProjectById.mockResolvedValue({
+        id: "project-1",
+        ownerId: "user-1",
+      });
+      mockRepository.findInstallationByProjectId.mockResolvedValue({
+        id: "installation-1",
+      });
+
+      await installationService.updateInstallation("user-1", "project-1", payload);
+
+      expect(mockRepository.updateInstallation).toHaveBeenCalledWith(
+        "project-1",
+        expected,
+      );
+    },
+  );
+
+  it.each([0, -1, "0", "-1", "invalid", ""])(
+    "rejects invalid maximumIcc=%s in PATCH payloads",
+    (maximumIcc) => {
+      expect(updateInstallationSchema.safeParse({ maximumIcc }).success).toBe(false);
+    },
+  );
+
+  it("keeps maximumIcc omitted when another installation field is updated", () => {
+    expect(updateInstallationSchema.parse({ nominalVoltage: "400" })).toEqual({
+      nominalVoltage: 400,
+    });
   });
 
   it("creates an installation for a project owned by the current user", async () => {

@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { projectStatusLabels } from "../model";
 import { useProject } from "../viewmodel";
+import { useGenerateProjectReport } from "@/features/report/viewmodel";
 import {
   useCalculateCircuit,
   useDeleteCircuit,
@@ -75,6 +76,7 @@ function ProjectDetailPage() {
   const validateCircuit = useValidateCircuit(projectId);
   const updateCircuit = useUpdateCircuit(projectId);
   const deleteCircuit = useDeleteCircuit(projectId);
+  const generateProjectReport = useGenerateProjectReport();
   const [editingCircuit, setEditingCircuit] = useState(null);
   const [deletingCircuit, setDeletingCircuit] = useState(null);
   const [viewingCircuit, setViewingCircuit] = useState(null);
@@ -95,6 +97,7 @@ function ProjectDetailPage() {
           cosPhi: Number(formData.get("cosPhi")),
           numberOfCircuits: Number(formData.get("numberOfCircuits")),
           usageLocation: String(formData.get("usageLocation")),
+          breakerTripCurve: String(formData.get("breakerTripCurve")) || null,
         },
       },
       { onSuccess: () => setEditingCircuit(null) },
@@ -163,11 +166,18 @@ function ProjectDetailPage() {
             <Button
               type="button"
               variant="outline"
-              disabled
-              title="La génération de rapports sera disponible ultérieurement"
+              disabled={generateProjectReport.isPending}
+              onClick={() => generateProjectReport.mutate(project.id)}
+              title="Télécharger le rapport PDF du projet"
             >
-              <FileText aria-hidden="true" />
-              Rapport bientôt disponible
+              {generateProjectReport.isPending ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : (
+                <FileText aria-hidden="true" />
+              )}
+              {generateProjectReport.isPending
+                ? "Génération..."
+                : "Télécharger le rapport"}
             </Button>
           </div>
         </header>
@@ -632,6 +642,10 @@ function ProjectDetailPage() {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
               <DataPoint label="Type" value={viewingCircuit.circuitType} />
               <DataPoint
+                label="Courbe du disjoncteur"
+                value={viewingCircuit.breakerTripCurve ?? "Non renseignée"}
+              />
+              <DataPoint
                 label="Emplacement d’usage"
                 value={
                   usageLocationLabels[viewingCircuit.usageLocation] ??
@@ -823,6 +837,23 @@ function ProjectDetailPage() {
                       {label}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label
+                htmlFor="edit-circuit-breaker-curve"
+                className="grid gap-1.5 text-sm font-medium"
+              >
+                Courbe du disjoncteur
+                <select
+                  id="edit-circuit-breaker-curve"
+                  name="breakerTripCurve"
+                  defaultValue={editingCircuit.breakerTripCurve ?? ""}
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Non renseignée</option>
+                  <option value="B">B · 5 × In</option>
+                  <option value="C">C · 10 × In</option>
+                  <option value="D">D · 20 × In</option>
                 </select>
               </label>
               <FormInput

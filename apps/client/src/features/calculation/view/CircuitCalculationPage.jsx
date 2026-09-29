@@ -47,6 +47,7 @@ function CircuitCalculationPage() {
         cosPhi: Number(formData.get("cosPhi")),
         numberOfCircuits: Number(formData.get("numberOfCircuits")),
         usageLocation: String(formData.get("usageLocation")),
+        breakerTripCurve: String(formData.get("breakerTripCurve")) || null,
       },
       { onSuccess: setCreatedCircuit },
     );
@@ -136,6 +137,17 @@ function CircuitCalculationPage() {
               label="Emplacement d’usage"
               required
               options={Object.entries(usageLocationLabels)}
+            />
+            <FormSelect
+              id="breakerTripCurve"
+              name="breakerTripCurve"
+              label="Courbe du disjoncteur"
+              options={[
+                ["", "Non renseignée"],
+                ["B", "B · 5 × In"],
+                ["C", "C · 10 × In"],
+                ["D", "D · 20 × In"],
+              ]}
             />
             <FormInput
               id="totalPower"

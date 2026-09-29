@@ -1,0 +1,2 @@
+ALTER TABLE "Project"
+ADD COLUMN "validatedAt" TIMESTAMP(3);

@@ -12,6 +12,7 @@ const createInstallationSchema = z.object({
   phaseType: z.enum(["1N", "3N"]),
   neutralRegime: z.enum(["TT", "TN", "IT"]),
   networkToTgdDistance: z.coerce.number().positive().optional(),
+  maximumIcc: z.coerce.number().positive().optional(),
   installMode: z.enum(["B1", "C"]),
   insulationType: z.enum(["PVC", "PR"]),
   generalProtectionRating: z.never().optional(),
@@ -26,6 +27,8 @@ const updateInstallationSchema = z
     networkToTgdDistance: z
       .union([z.coerce.number().positive(), z.null()])
       .optional(),
+    maximumIcc: z.union([z.coerce.number().positive(), z.null()]).optional(),
+    maximumIcc: z.union([z.coerce.number().positive(), z.null()]).optional(),
     installMode: z.enum(["B1", "C"]).optional(),
     insulationType: z.enum(["PVC", "PR"]).optional(),
     generalProtectionRating: z.never().optional(),

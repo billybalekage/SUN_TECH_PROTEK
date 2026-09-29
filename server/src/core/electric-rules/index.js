@@ -2,6 +2,7 @@ const {
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
   calculateMaxLengthForIccMin,
+  calculateRequiredIccForTripCurve,
 } = require("./formulas/Icc");
 const {
   RESISTIVITY,
@@ -44,6 +45,7 @@ module.exports = {
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
   calculateMaxLengthForIccMin,
+  calculateRequiredIccForTripCurve,
 
   // Coordination des protections (Ib ≤ In ≤ Iz)
   checkCoordination,

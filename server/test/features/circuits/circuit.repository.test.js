@@ -16,6 +16,7 @@ const transaction = {
   },
   differentialDevice: {
     findFirst: vi.fn(),
+    findUnique: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
   },
@@ -113,6 +114,11 @@ describe("createCircuit differential device assignment", () => {
 
   it("saves a DDR rating, invalidates sibling results, and upserts atomically", async () => {
     const result = { id: "result-1" };
+    transaction.differentialDevice.findUnique.mockResolvedValue({
+      sensitivityMa: 30,
+      type: "A",
+      ratedCurrent: 40,
+    });
     transaction.circuit.findMany.mockResolvedValue([{ id: "sibling-1" }]);
     transaction.calculationResult.upsert.mockResolvedValue(result);
 
@@ -148,6 +154,41 @@ describe("createCircuit differential device assignment", () => {
       where: { circuitId: "circuit-1" },
       create: { circuitId: "circuit-1", ib: 10 },
       update: { ib: 10 },
+    });
+  });
+
+  it("keeps sibling calculation results when the shared DDR rating is unchanged", async () => {
+    const result = { id: "result-2" };
+    transaction.differentialDevice.findUnique.mockResolvedValue({
+      sensitivityMa: 30,
+      type: "A",
+      ratedCurrent: 32,
+    });
+    transaction.calculationResult.upsert.mockResolvedValue(result);
+
+    await expect(
+      circuitRepository.saveCalculationResult(
+        "circuit-2",
+        { ib: 12 },
+        "installation-1",
+        4,
+        40,
+        {
+          id: "device-1",
+          sensitivityMa: 30,
+          type: "A",
+          ratedCurrent: 32,
+        },
+        prismaClient,
+      ),
+    ).resolves.toBe(result);
+
+    expect(transaction.calculationResult.deleteMany).not.toHaveBeenCalled();
+    expect(transaction.circuit.updateMany).not.toHaveBeenCalled();
+    expect(transaction.calculationResult.upsert).toHaveBeenCalledWith({
+      where: { circuitId: "circuit-2" },
+      create: { circuitId: "circuit-2", ib: 12 },
+      update: { ib: 12 },
     });
   });
 
