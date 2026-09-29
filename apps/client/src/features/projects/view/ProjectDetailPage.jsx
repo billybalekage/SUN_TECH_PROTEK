@@ -179,6 +179,14 @@ function ProjectDetailPage() {
                 ? "Génération..."
                 : "Télécharger le rapport"}
             </Button>
+            {generateProjectReport.isError && (
+              <p className="mt-3 text-sm text-destructive" role="alert">
+                {getErrorMessage(
+                  generateProjectReport.error,
+                  "La génération du rapport a échoué.",
+                )}
+              </p>
+            )}
           </div>
         </header>
 
@@ -904,14 +912,6 @@ function ProjectDetailPage() {
               {getErrorMessage(
                 updateCircuit.error,
                 "La modification a échoué.",
-              )}
-            </p>
-          )}
-          {generateProjectReport.isError && (
-            <p className="mt-3 text-sm text-destructive" role="alert">
-              {getErrorMessage(
-                generateProjectReport.error,
-                "La génération du rapport a échoué.",
               )}
             </p>
           )}
