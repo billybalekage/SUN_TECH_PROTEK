@@ -1,4 +1,4 @@
-const MAX_SENSITIVITY_BY_USAGE_LOCATION = {
+const REQUIRED_SENSITIVITY_BY_USAGE = {
   SALLE_DE_BAIN_VOLUME_0_1_2: 30,
   EXTERIEUR: 30,
   CUISINE_PRISES: 30,
@@ -8,8 +8,42 @@ const MAX_SENSITIVITY_BY_USAGE_LOCATION = {
   AUTRES: 300,
 };
 
+const MAX_SENSITIVITY_BY_USAGE_LOCATION = REQUIRED_SENSITIVITY_BY_USAGE;
+const STANDARD_SENSITIVITIES_MA = [10, 30, 100, 300, 500, 1000];
+
+// Cette liste indicative doit être confirmée selon la norme et les charges installées.
+const CIRCUIT_TYPES_REQUIRING_TYPE_A = [
+  "PLAQUE_INDUCTION",
+  "LAVE_LINGE",
+  "LAVE_VAISSELLE",
+  "VMC",
+  "POMPE_A_CHALEUR",
+  "BORNE_RECHARGE_VE",
+];
+
+function getRequiredSensitivity(usageLocation) {
+  const sensitivityMa = REQUIRED_SENSITIVITY_BY_USAGE[usageLocation];
+  if (sensitivityMa === undefined) {
+    throw new Error(`Usage/emplacement inconnu : ${usageLocation}`);
+  }
+  return sensitivityMa;
+}
+
+function getRequiredDifferentialType(circuitType) {
+  const normalizedCircuitType = circuitType
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+  return CIRCUIT_TYPES_REQUIRING_TYPE_A.some((type) =>
+    normalizedCircuitType.includes(type),
+  )
+    ? "A"
+    : "AC";
+}
+
 function checkDifferentialSensitivity({ usageLocation, chosenSensitivityMa }) {
-  const maximumSensitivityMa = MAX_SENSITIVITY_BY_USAGE_LOCATION[usageLocation];
+  const maximumSensitivityMa = REQUIRED_SENSITIVITY_BY_USAGE[usageLocation];
   const reasons = [];
 
   if (maximumSensitivityMa === undefined) {
@@ -60,7 +94,12 @@ function checkSelectivity({
 }
 
 module.exports = {
+  REQUIRED_SENSITIVITY_BY_USAGE,
   MAX_SENSITIVITY_BY_USAGE_LOCATION,
+  STANDARD_SENSITIVITIES_MA,
+  CIRCUIT_TYPES_REQUIRING_TYPE_A,
+  getRequiredSensitivity,
+  getRequiredDifferentialType,
   checkDifferentialSensitivity,
   checkSelectivity,
 };

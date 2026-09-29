@@ -14,7 +14,7 @@ const createInstallationSchema = z.object({
   networkToTgdDistance: z.coerce.number().positive().optional(),
   installMode: z.enum(["B1", "C"]),
   insulationType: z.enum(["PVC", "PR"]),
-  generalProtectionRating: z.coerce.number().int().positive().optional(),
+  generalProtectionRating: z.never().optional(),
   generalProtectionType: z.enum(["A", "AC", "F"]).optional(),
 });
 
@@ -28,7 +28,7 @@ const updateInstallationSchema = z
       .optional(),
     installMode: z.enum(["B1", "C"]).optional(),
     insulationType: z.enum(["PVC", "PR"]).optional(),
-    generalProtectionRating: z.coerce.number().int().positive().optional(),
+    generalProtectionRating: z.never().optional(),
     generalProtectionType: z.enum(["A", "AC", "F"]).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {

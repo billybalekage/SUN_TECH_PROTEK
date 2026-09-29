@@ -15,8 +15,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { usageLocationLabels } from "@/features/installation/model";
 import {
+  circuitTypeLabels,
+  usageLocationLabels,
+} from "@/features/installation/model";
+import {
+  useComputeDifferentialDeviceRating,
   useDeviceCoverageReports,
   useDifferentialDevices,
   useInstallationSelectivity,
@@ -66,6 +70,7 @@ function ProjectDetailPage() {
   const differentialDevices = differentialDevicesQuery.data ?? [];
   const coverageQueries = useDeviceCoverageReports(differentialDevices);
   const selectivityQuery = useInstallationSelectivity(installationId);
+  const computeDeviceRating = useComputeDifferentialDeviceRating(projectId);
   const calculateCircuit = useCalculateCircuit(projectId);
   const validateCircuit = useValidateCircuit(projectId);
   const updateCircuit = useUpdateCircuit(projectId);
@@ -199,7 +204,7 @@ function ProjectDetailPage() {
                   value={
                     installation.generalProtectionRating
                       ? `${installation.generalProtectionRating} A · type ${installation.generalProtectionType ?? "non renseigné"}`
-                      : "Non renseignée"
+                      : "À calculer après dimensionnement des circuits"
                   }
                 />
               </dl>
@@ -293,6 +298,38 @@ function ProjectDetailPage() {
                               Valider le calcul
                             </Button>
                           )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={calculateCircuit.isPending}
+                            onClick={() =>
+                              calculateCircuit.mutate(circuit.id, {
+                                onSuccess: (result) =>
+                                  setViewingCircuit((current) =>
+                                    current?.id === circuit.id
+                                      ? {
+                                          ...current,
+                                          calculationResult: result,
+                                          differentialDevice:
+                                            result.differentialDevice ??
+                                            current.differentialDevice,
+                                        }
+                                      : current,
+                                  ),
+                              })
+                            }
+                          >
+                            {calculateCircuit.isPending &&
+                            calculateCircuit.variables === circuit.id ? (
+                              <LoaderCircle
+                                aria-hidden="true"
+                                className="animate-spin"
+                              />
+                            ) : (
+                              <Play aria-hidden="true" />
+                            )}
+                            Recalculer
+                          </Button>
                           <Button
                             type="button"
                             size="sm"
@@ -437,9 +474,13 @@ function ProjectDetailPage() {
                   role={selectivityQuery.data.isCompliant ? "status" : "alert"}
                 >
                   Sélectivité générale :{" "}
-                  {selectivityQuery.data.isCompliant
-                    ? "conforme"
-                    : "à vérifier"}{" "}
+                  {selectivityQuery.data.perDevice?.some(
+                    (device) => !device.isRated,
+                  )
+                    ? "à calculer après dimensionnement des DDR"
+                    : selectivityQuery.data.isCompliant
+                      ? "conforme"
+                      : "à vérifier"}{" "}
                   · hypothèse amont sélectif{" "}
                   {selectivityQuery.data.assumption.upstreamSensitivityMa} mA
                 </p>
@@ -458,22 +499,27 @@ function ProjectDetailPage() {
               </p>
             ) : differentialDevices.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
-                Aucun DDR n’est encore configuré. Créez-en un lors de l’ajout
-                d’un circuit.
+                Aucun DDR n’est encore configuré. Il sera créé automatiquement
+                lors de l’ajout du premier circuit.
               </p>
             ) : (
               <div className="divide-y divide-border">
                 {differentialDevices.map((device, index) => {
                   const coverageQuery = coverageQueries[index];
+                  const isDeviceRated =
+                    Number.isInteger(device.sensitivityMa) &&
+                    typeof device.type === "string" &&
+                    Number.isInteger(device.ratedCurrent);
                   return (
                     <div
                       key={device.id}
-                      className="grid gap-2 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                      className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                     >
                       <div>
                         <p className="font-medium">
-                          {device.sensitivityMa} mA · type {device.type} ·{" "}
-                          {device.ratedCurrent} A
+                          {device.sensitivityMa != null
+                            ? `${device.sensitivityMa} mA · type ${device.type} · ${device.ratedCurrent} A`
+                            : `${device.label || "DDR"} · À dimensionner`}
                           {device.isSelectiveType ? " · sélectif" : ""}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -485,11 +531,13 @@ function ProjectDetailPage() {
                             .join(", ")}
                         </p>
                       </div>
-                      <div className="text-sm">
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
                         {(device.circuits ?? []).length === 0 ? (
                           <span className="text-muted-foreground">
                             Aucun circuit affecté
                           </span>
+                        ) : !isDeviceRated ? (
+                          <span className="text-amber-800">À dimensionner</span>
                         ) : coverageQuery?.isPending ? (
                           <span className="text-muted-foreground">
                             Vérification...
@@ -513,7 +561,39 @@ function ProjectDetailPage() {
                               : "à vérifier"}
                           </span>
                         ) : null}
+                        {(device.circuits ?? []).length > 0 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={computeDeviceRating.isPending}
+                            onClick={() =>
+                              computeDeviceRating.mutate(device.id)
+                            }
+                          >
+                            {computeDeviceRating.isPending &&
+                            computeDeviceRating.variables === device.id ? (
+                              <LoaderCircle
+                                aria-hidden="true"
+                                className="animate-spin"
+                              />
+                            ) : null}
+                            {isDeviceRated ? "Recalculer" : "Dimensionner"}
+                          </Button>
+                        )}
                       </div>
+                      {computeDeviceRating.isError &&
+                        computeDeviceRating.variables === device.id && (
+                          <p
+                            className="text-sm text-destructive sm:col-span-2"
+                            role="alert"
+                          >
+                            {getErrorMessage(
+                              computeDeviceRating.error,
+                              "Le dimensionnement du DDR a échoué.",
+                            )}
+                          </p>
+                        )}
                     </div>
                   );
                 })}
@@ -613,9 +693,11 @@ function ProjectDetailPage() {
                   <DataPoint
                     label="Conformité électrique"
                     value={
-                      viewingCircuit.calculationResult.isCompliant
-                        ? "Conforme"
-                        : "Non conforme"
+                      !viewingCircuit.calculationResult.isCompliant
+                        ? "Non conforme"
+                        : viewingCircuit.calculationResult.warnings?.length
+                          ? "Vérification incomplète"
+                          : "Conforme"
                     }
                   />
                   <DataPoint
@@ -627,6 +709,53 @@ function ProjectDetailPage() {
                 </>
               )}
             </dl>
+          )}
+          {viewingCircuit?.calculationResult?.isCompliant === false && (
+            <section
+              className="border-l-4 border-amber-600 bg-amber-50 p-4"
+              aria-labelledby="circuit-noncompliance-heading"
+            >
+              <h3
+                id="circuit-noncompliance-heading"
+                className="font-semibold text-amber-950"
+              >
+                Raisons de la non-conformité
+              </h3>
+              {viewingCircuit.calculationResult.reasons?.length ? (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950">
+                  {viewingCircuit.calculationResult.reasons.map(
+                    (reason, index) => (
+                      <li key={`${index}-${reason}`}>{reason}</li>
+                    ),
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-amber-950">
+                  Les motifs ne sont pas disponibles pour cet ancien calcul.
+                  Relancez le calcul pour les enregistrer.
+                </p>
+              )}
+            </section>
+          )}
+          {viewingCircuit?.calculationResult?.warnings?.length > 0 && (
+            <section
+              className="border-l-4 border-amber-500 bg-amber-50 p-4"
+              aria-labelledby="circuit-incomplete-checks-heading"
+            >
+              <h3
+                id="circuit-incomplete-checks-heading"
+                className="font-semibold text-amber-950"
+              >
+                Contrôles incomplets
+              </h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-950">
+                {viewingCircuit.calculationResult.warnings.map(
+                  (warning, index) => (
+                    <li key={`${index}-${warning}`}>{warning}</li>
+                  ),
+                )}
+              </ul>
+            </section>
           )}
         </DialogContent>
       </Dialog>
@@ -689,8 +818,11 @@ function ProjectDetailPage() {
                   required
                   className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
                 >
-                  <option value="ECLAIRAGE">Éclairage</option>
-                  <option value="AUTRES_USAGES">Autres usages</option>
+                  {Object.entries(circuitTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <FormInput
@@ -842,6 +974,15 @@ function CircuitProtectionDetails({ circuit }) {
 function CircuitStatus({ result }) {
   if (!result) {
     return null;
+  }
+
+  if (result.isCompliant && result.warnings?.length > 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-950">
+        <AlertTriangle aria-hidden="true" className="size-3.5" />
+        Vérification incomplète
+      </span>
+    );
   }
 
   return result.isCompliant ? (

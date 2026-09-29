@@ -2,20 +2,12 @@ const { z } = require("zod");
 
 const createDifferentialDeviceSchema = z.object({
   installationId: z.string().uuid(),
-  sensitivityMa: z.coerce
-    .number()
-    .refine((value) => [10, 30, 100, 300, 500, 1000].includes(value)),
-  type: z.enum(["A", "AC", "F"]),
+  label: z.string().trim().max(100).optional(),
   isSelectiveType: z.preprocess((value) => {
     if (value === "true") return true;
     if (value === "false") return false;
     return value;
   }, z.boolean().default(false)),
-  ratedCurrent: z.preprocess(
-    (value) =>
-      typeof value === "string" && value.trim() !== "" ? Number(value) : value,
-    z.number().int().positive(),
-  ),
 });
 
 const assignCircuitSchema = z.object({

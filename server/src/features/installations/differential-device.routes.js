@@ -26,6 +26,11 @@ router.post(
   validate(assignCircuitSchema),
   controller.assignCircuit,
 );
+router.post(
+  "/:id/compute",
+  validate(idParamSchema, "params"),
+  controller.computeRating,
+);
 router.get(
   "/:id/coverage",
   validate(idParamSchema, "params"),

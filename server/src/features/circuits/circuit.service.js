@@ -146,7 +146,11 @@ async function runCircuitCalculation(
     calculateIccMin,
     calculateMaxLengthForIccMin,
     checkCoordination,
+    checkDifferentialSensitivity,
   } = electricRules;
+  const coordinationService =
+    dependencies.coordinationService ??
+    require("../installations/coordination.service");
   const {
     izCurrent: providedIzCurrent,
     sectionByAmpacity,
@@ -278,8 +282,9 @@ async function runCircuitCalculation(
     phaseType: installation.phaseType,
   });
   const reasons = [];
+  const warnings = [];
   if (minimumIcc === undefined) {
-    reasons.push(
+    warnings.push(
       "Icc,min requis non fourni : la longueur maximale n'est pas vérifiée",
     );
   } else {
@@ -302,7 +307,7 @@ async function runCircuitCalculation(
     .filter(({ role }) => role === "PROTECTION")
     .map(({ component }) => component);
   if (maximumIcc === undefined) {
-    reasons.push(
+    warnings.push(
       "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",
     );
   } else if (
@@ -318,15 +323,33 @@ async function runCircuitCalculation(
       `Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (${maximumIcc}A)`,
     );
   }
-  if (
-    installation.neutralRegime === "TT" &&
-    !(circuit.circuitComponents ?? []).some(
-      ({ role }) => role === "DIFFERENTIAL",
-    )
-  ) {
-    reasons.push(
-      "Aucun dispositif différentiel n'est lié au circuit en régime TT",
-    );
+  let differentialDevice = null;
+  let differentialDeviceRating = null;
+  if (circuit.differentialDeviceId) {
+    try {
+      const calculatedDevice = await coordinationService.calculateDeviceRating(
+        userId,
+        circuit.differentialDeviceId,
+      );
+      differentialDeviceRating = {
+        id: calculatedDevice.deviceId,
+        ...calculatedDevice.rating,
+      };
+      differentialDevice = {
+        id: calculatedDevice.deviceId,
+        ...calculatedDevice.rating,
+      };
+      const differentialCheck = checkDifferentialSensitivity({
+        usageLocation: circuit.usageLocation,
+        chosenSensitivityMa: differentialDevice.sensitivityMa,
+      });
+      reasons.push(...differentialCheck.reasons);
+    } catch (error) {
+      if (error.statusCode !== 400) throw error;
+      reasons.push(error.message);
+    }
+  } else {
+    reasons.push("Aucun dispositif différentiel n'est lié à ce circuit");
   }
 
   // 6. Intensité admissible corrigée et coordination des protections
@@ -345,6 +368,29 @@ async function runCircuitCalculation(
     );
   }
 
+  const installationCircuits =
+    await circuitRepository.findCircuitsByInstallation(installation.id);
+  const generalProtectionIb = installationCircuits.reduce(
+    (total, installationCircuit) =>
+      total +
+      calculateIb(
+        Number(installationCircuit.totalPower),
+        Number(installation.nominalVoltage),
+        Number(installationCircuit.cosPhi),
+        installation.phaseType,
+      ),
+    0,
+  );
+  const generalProtectionRating =
+    generalProtectionIb > 0
+      ? selectProtectionRating(generalProtectionIb)
+      : null;
+  if (generalProtectionRating === null) {
+    warnings.push(
+      "Aucun calibre normalisé ne couvre le courant total de l’installation",
+    );
+  }
+
   const result = {
     ib,
     deltaUPercent,
@@ -353,6 +399,8 @@ async function runCircuitCalculation(
     izCurrent,
     icc,
     isCompliant: reasons.length === 0,
+    reasons,
+    warnings,
   };
 
   await circuitRepository.saveCalculationResult(
@@ -360,13 +408,16 @@ async function runCircuitCalculation(
     result,
     installation.id,
     installation.version,
+    generalProtectionRating,
+    differentialDeviceRating,
   );
 
   return {
     ...result,
-    reasons,
     baseIz,
     deratingFactors: { k1, k2, k3 },
+    generalProtectionRating,
+    differentialDevice,
   };
 }
 
@@ -374,6 +425,7 @@ function createCircuitService({
   circuitRepository = defaultCircuitRepository,
   normService = defaultNormService,
   electricRules = defaultElectricRules,
+  coordinationService,
 } = {}) {
   return {
     createCircuit: (userId, data) =>
@@ -395,6 +447,7 @@ function createCircuitService({
         circuitRepository,
         normService,
         electricRules,
+        coordinationService,
       }),
   };
 }

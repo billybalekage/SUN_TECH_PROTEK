@@ -3,6 +3,7 @@ import circuitServiceModule from "../../../src/features/circuits/circuit.service
 
 const mockCircuitRepository = {
   findCircuitById: vi.fn(),
+  findCircuitsByInstallation: vi.fn(),
   updateCircuit: vi.fn(),
   saveCalculationResult: vi.fn(),
   markCircuitValidated: vi.fn(),
@@ -28,6 +29,17 @@ const mockElectricRules = {
   calculateIccMin: vi.fn(),
   calculateMaxLengthForIccMin: vi.fn(),
   checkCoordination: vi.fn(),
+  checkDifferentialSensitivity: vi.fn(
+    ({ usageLocation, chosenSensitivityMa }) => ({
+      isCompliant:
+        Boolean(usageLocation) && Number.isFinite(chosenSensitivityMa),
+      reasons: [],
+    }),
+  ),
+};
+
+const mockCoordinationService = {
+  calculateDeviceRating: vi.fn(),
 };
 
 let circuitService;
@@ -38,6 +50,7 @@ beforeEach(() => {
     circuitRepository: mockCircuitRepository,
     normService: mockNormService,
     electricRules: mockElectricRules,
+    coordinationService: mockCoordinationService,
   });
   mockCircuitRepository.findCircuitById.mockResolvedValue({
     id: "circuit-1",
@@ -56,6 +69,9 @@ beforeEach(() => {
       project: { ownerId: "user-1" },
     },
   });
+  mockCircuitRepository.findCircuitsByInstallation.mockResolvedValue([
+    { totalPower: 2300, cosPhi: 1 },
+  ]);
   mockElectricRules.calculateIb.mockReturnValue(10);
   mockElectricRules.selectProtectionRating.mockReturnValue(16);
   mockElectricRules.calculateCorrectedCurrent.mockReturnValue(20);
@@ -67,6 +83,12 @@ beforeEach(() => {
     isCompliant: true,
     reasons: [],
   });
+  mockCoordinationService.calculateDeviceRating.mockResolvedValue({
+    deviceId: "device-1",
+    installationId: "installation-1",
+    expectedVersion: 7,
+    rating: { sensitivityMa: 30, type: "A", ratedCurrent: 32 },
+  });
   mockNormService.getMaxDeltaUPercent.mockResolvedValue(3);
   mockNormService.getGroupingFactor.mockResolvedValue(0.8);
   mockNormService.getTemperatureFactor.mockResolvedValue(1);
@@ -75,6 +97,96 @@ beforeEach(() => {
 });
 
 describe("runCircuitCalculation normative integration", () => {
+  it("returns the automatically computed differential protection", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      differentialDeviceId: "device-1",
+      circuitType: "ECLAIRAGE",
+      numberOfCircuits: 1,
+      totalPower: 2300,
+      cosPhi: 1,
+      farthestLoadDistance: 20,
+      installation: {
+        id: "installation-1",
+        version: 7,
+        nominalVoltage: 230,
+        phaseType: "1N",
+        installMode: "B1",
+        insulationType: "PVC",
+        project: { ownerId: "user-1" },
+      },
+    });
+
+    const result = await circuitService.runCircuitCalculation(
+      "user-1",
+      "circuit-1",
+    );
+
+    expect(mockCoordinationService.calculateDeviceRating).toHaveBeenCalledWith(
+      "user-1",
+      "device-1",
+    );
+    expect(result.differentialDevice).toMatchObject({
+      sensitivityMa: 30,
+      type: "A",
+      ratedCurrent: 32,
+    });
+    expect(result.generalProtectionRating).toBe(16);
+  });
+
+  it("keeps unverified Icc checks as warnings instead of false non-compliance", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      differentialDeviceId: "device-1",
+      circuitType: "ECLAIRAGE",
+      usageLocation: "ECLAIRAGE",
+      numberOfCircuits: 1,
+      totalPower: 2300,
+      cosPhi: 1,
+      farthestLoadDistance: 20,
+      installation: {
+        id: "installation-1",
+        version: 7,
+        nominalVoltage: 230,
+        phaseType: "1N",
+        installMode: "B1",
+        insulationType: "PVC",
+        project: { ownerId: "user-1" },
+      },
+    });
+
+    const result = await circuitService.runCircuitCalculation(
+      "user-1",
+      "circuit-1",
+    );
+
+    expect(result.isCompliant).toBe(true);
+    expect(result.reasons).toEqual([]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Icc,min requis non fourni"),
+        expect.stringContaining("Icc,max réseau non fourni"),
+      ]),
+    );
+    expect(mockCircuitRepository.saveCalculationResult).toHaveBeenCalledWith(
+      "circuit-1",
+      expect.objectContaining({
+        isCompliant: true,
+        reasons: [],
+        warnings: result.warnings,
+      }),
+      "installation-1",
+      7,
+      16,
+      {
+        id: "device-1",
+        sensitivityMa: 30,
+        type: "A",
+        ratedCurrent: 32,
+      },
+    );
+  });
+
   it("derives voltage-drop limits, ampacity section, and corrected Iz from norms", async () => {
     const result = await circuitService.runCircuitCalculation(
       "user-1",
@@ -119,11 +231,19 @@ describe("runCircuitCalculation normative integration", () => {
       deratingFactors: { k1: 1, k2: 0.8, k3: 1 },
       isCompliant: false,
     });
-    expect(result.reasons).toContain(
+    expect(result.warnings).toContain(
       "Icc,min requis non fourni : la longueur maximale n'est pas vérifiée",
     );
-    expect(result.reasons).toContain(
+    expect(result.warnings).toContain(
       "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",
+    );
+    expect(mockCircuitRepository.saveCalculationResult).toHaveBeenCalledWith(
+      "circuit-1",
+      expect.objectContaining({ reasons: result.reasons }),
+      "installation-1",
+      7,
+      16,
+      null,
     );
   });
 
@@ -178,6 +298,8 @@ describe("runCircuitCalculation normative integration", () => {
       expect.objectContaining({ isCompliant: false }),
       "installation-1",
       7,
+      16,
+      null,
     );
   });
 
@@ -223,7 +345,7 @@ describe("runCircuitCalculation normative integration", () => {
       "Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (4000A)",
     );
     expect(result.reasons).toContain(
-      "Aucun dispositif différentiel n'est lié au circuit en régime TT",
+      "Aucun dispositif différentiel n'est lié à ce circuit",
     );
   });
 });

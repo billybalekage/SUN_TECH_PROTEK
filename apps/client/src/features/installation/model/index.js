@@ -12,6 +12,17 @@ export const usageLocationLabels = {
   AUTRES: "Autres usages",
 };
 
+export const circuitTypeLabels = {
+  ECLAIRAGE: "Éclairage",
+  AUTRES_USAGES: "Autres usages",
+  PLAQUE_INDUCTION: "Plaque à induction",
+  LAVE_LINGE: "Lave-linge",
+  LAVE_VAISSELLE: "Lave-vaisselle",
+  VMC: "VMC",
+  POMPE_A_CHALEUR: "Pompe à chaleur",
+  BORNE_RECHARGE_VE: "Borne de recharge VE",
+};
+
 export function getDifferentialDevices(installationId) {
   return api
     .get(`differential-devices/installation/${installationId}`)
@@ -21,6 +32,12 @@ export function getDifferentialDevices(installationId) {
 export function createDifferentialDevice(device) {
   return api
     .post("differential-devices", device)
+    .then((response) => response.data);
+}
+
+export function computeDifferentialDeviceRating(deviceId) {
+  return api
+    .post(`differential-devices/${deviceId}/compute`)
     .then((response) => response.data);
 }
 

@@ -50,9 +50,6 @@ function ProjectCreationPage() {
         ...(distance ? { networkToTgdDistance: Number(distance) } : {}),
         installMode: formData.get("installMode"),
         insulationType: formData.get("insulationType"),
-        generalProtectionRating: Number(
-          formData.get("generalProtectionRating"),
-        ),
         generalProtectionType: formData.get("generalProtectionType"),
       },
       {
@@ -205,16 +202,6 @@ function ProjectCreationPage() {
                 ["PVC", "PVC"],
                 ["PR", "PR"],
               ]}
-            />
-            <FormInput
-              id="generalProtectionRating"
-              name="generalProtectionRating"
-              label="Calibre de la protection générale (A)"
-              type="number"
-              min="1"
-              step="1"
-              defaultValue="40"
-              required
             />
             <FormSelect
               id="generalProtectionType"

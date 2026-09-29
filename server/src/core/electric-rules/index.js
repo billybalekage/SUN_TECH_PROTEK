@@ -19,6 +19,8 @@ const {
 } = require("./formulas/protection-rating");
 const { checkCoordination } = require("./rules/coordination");
 const {
+  getRequiredSensitivity,
+  getRequiredDifferentialType,
   checkDifferentialSensitivity,
   checkSelectivity,
 } = require("./rules/differential-protection");
@@ -47,4 +49,6 @@ module.exports = {
   checkCoordination,
   checkDifferentialSensitivity,
   checkSelectivity,
+  getRequiredSensitivity,
+  getRequiredDifferentialType,
 };
