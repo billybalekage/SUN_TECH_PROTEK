@@ -96,6 +96,42 @@ describe("installation service", () => {
     ).toBe(false);
   });
 
+  it.each([6000, "6000", null])(
+    "passes maximumIcc=%s from PATCH validation to persistence",
+    async (maximumIcc) => {
+      const payload = updateInstallationSchema.parse({ maximumIcc });
+      const expected = { maximumIcc: maximumIcc === null ? null : 6000 };
+      expect(payload).toEqual(expected);
+      mockRepository.findProjectById.mockResolvedValue({
+        id: "project-1",
+        ownerId: "user-1",
+      });
+      mockRepository.findInstallationByProjectId.mockResolvedValue({
+        id: "installation-1",
+      });
+
+      await installationService.updateInstallation("user-1", "project-1", payload);
+
+      expect(mockRepository.updateInstallation).toHaveBeenCalledWith(
+        "project-1",
+        expected,
+      );
+    },
+  );
+
+  it.each([0, -1, "0", "-1", "invalid", ""])(
+    "rejects invalid maximumIcc=%s in PATCH payloads",
+    (maximumIcc) => {
+      expect(updateInstallationSchema.safeParse({ maximumIcc }).success).toBe(false);
+    },
+  );
+
+  it("keeps maximumIcc omitted when another installation field is updated", () => {
+    expect(updateInstallationSchema.parse({ nominalVoltage: "400" })).toEqual({
+      nominalVoltage: 400,
+    });
+  });
+
   it("creates an installation for a project owned by the current user", async () => {
     const payload = {
       projectId: "project-1",

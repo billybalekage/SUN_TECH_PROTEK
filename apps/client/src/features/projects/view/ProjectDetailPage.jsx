@@ -147,48 +147,38 @@ function ProjectDetailPage() {
                 "Aucune adresse ou contact renseigné"}
             </p>
           </div>
-          <div className="grid justify-items-start gap-2 sm:justify-items-end">
-            <div className="flex flex-wrap gap-2">
-              {!installation ? (
-                <Button asChild>
-                  <Link to={`/projects/new?projectId=${project.id}`}>
-                    <Plus aria-hidden="true" />
-                    Configurer l’installation
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild>
-                  <Link to={`/projects/${project.id}/circuits/new`}>
-                    <Plus aria-hidden="true" />
-                    Ajouter un circuit
-                  </Link>
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                disabled={generateProjectReport.isPending}
-                onClick={() => generateProjectReport.mutate(project.id)}
-                title="Télécharger le rapport PDF du projet"
-              >
-                {generateProjectReport.isPending ? (
-                  <LoaderCircle aria-hidden="true" className="animate-spin" />
-                ) : (
-                  <FileText aria-hidden="true" />
-                )}
-                {generateProjectReport.isPending
-                  ? "Génération..."
-                  : "Télécharger le rapport"}
+          <div className="flex flex-wrap gap-2">
+            {!installation ? (
+              <Button asChild>
+                <Link to={`/projects/new?projectId=${project.id}`}>
+                  <Plus aria-hidden="true" />
+                  Configurer l’installation
+                </Link>
               </Button>
-            </div>
-            {generateProjectReport.isError && (
-              <p className="text-sm text-destructive" role="alert">
-                {getErrorMessage(
-                  generateProjectReport.error,
-                  "La génération du rapport a échoué.",
-                )}
-              </p>
+            ) : (
+              <Button asChild>
+                <Link to={`/projects/${project.id}/circuits/new`}>
+                  <Plus aria-hidden="true" />
+                  Ajouter un circuit
+                </Link>
+              </Button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={generateProjectReport.isPending}
+              onClick={() => generateProjectReport.mutate(project.id)}
+              title="Télécharger le rapport PDF du projet"
+            >
+              {generateProjectReport.isPending ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : (
+                <FileText aria-hidden="true" />
+              )}
+              {generateProjectReport.isPending
+                ? "Génération..."
+                : "Télécharger le rapport"}
+            </Button>
           </div>
         </header>
 
