@@ -50,6 +50,10 @@ function ProjectCreationPage() {
         ...(distance ? { networkToTgdDistance: Number(distance) } : {}),
         installMode: formData.get("installMode"),
         insulationType: formData.get("insulationType"),
+        generalProtectionRating: Number(
+          formData.get("generalProtectionRating"),
+        ),
+        generalProtectionType: formData.get("generalProtectionType"),
       },
       {
         onSuccess: () => navigate(`/projects/${project.id}`, { replace: true }),
@@ -200,6 +204,26 @@ function ProjectCreationPage() {
               options={[
                 ["PVC", "PVC"],
                 ["PR", "PR"],
+              ]}
+            />
+            <FormInput
+              id="generalProtectionRating"
+              name="generalProtectionRating"
+              label="Calibre de la protection générale (A)"
+              type="number"
+              min="1"
+              step="1"
+              defaultValue="40"
+              required
+            />
+            <FormSelect
+              id="generalProtectionType"
+              name="generalProtectionType"
+              label="Type différentiel général"
+              options={[
+                ["A", "Type A"],
+                ["AC", "Type AC"],
+                ["F", "Type F"],
               ]}
             />
             {createInstallation.isError && (

@@ -14,3 +14,13 @@ export function getProjects() {
 export function getProject(projectId) {
   return api.get(`projects/${projectId}`).then((response) => response.data);
 }
+
+export function updateProject({ projectId, data }) {
+  return api
+    .patch(`projects/${projectId}`, data)
+    .then((response) => response.data);
+}
+
+export function deleteProject(projectId) {
+  return api.delete(`projects/${projectId}`);
+}

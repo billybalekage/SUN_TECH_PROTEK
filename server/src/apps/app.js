@@ -19,6 +19,7 @@ const clientRoutes = require("../features/clients/auth/client.routes");
 const clientDashboardRoutes = require("../features/clients/dashboard/dashboard.routes");
 const projectRoutes = require("../features/projects/routes/project.route");
 const installationRoutes = require("../features/installations/installation.routes");
+const differentialDeviceRoutes = require("../features/installations/differential-device.routes");
 
 const createApp = () => {
   const app = express();
@@ -118,16 +119,6 @@ const createApp = () => {
     });
   });
 
-  app.use((req, res, next) => {
-    res.locals.cookieOptions = {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: env.COOKIE_MAX_AGE_MS,
-    };
-    next();
-  });
-
   app.get("/health", (_req, res) => {
     res.status(200).json({
       status: "ok",
@@ -140,6 +131,7 @@ const createApp = () => {
   app.use("/api/v1/clients", clientRoutes);
   app.use("/api/v1/clients/dashboard", clientDashboardRoutes);
   app.use("/api/v1/projects", projectRoutes);
+  app.use("/api/v1/differential-devices", differentialDeviceRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

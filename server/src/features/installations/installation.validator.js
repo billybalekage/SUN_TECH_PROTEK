@@ -1,4 +1,3 @@
-const Joi = require("joi");
 const { z } = require("zod");
 
 const projectIdParamsSchema = z.object({
@@ -7,14 +6,16 @@ const projectIdParamsSchema = z.object({
     .uuid("L'identifiant du projet doit être un UUID valide"),
 });
 
-const createInstallationSchema = Joi.object({
-  projectId: Joi.string().uuid().required(),
-  nominalVoltage: Joi.number().positive().required(),
-  phaseType: Joi.string().valid("1N", "3N").required(),
-  neutralRegime: Joi.string().valid("TT", "TN", "IT").required(),
-  networkToTgdDistance: Joi.number().positive().optional(),
-  installMode: Joi.string().valid("B1", "C").required(),
-  insulationType: Joi.string().valid("PVC", "PR").required(),
+const createInstallationSchema = z.object({
+  projectId: z.string().uuid(),
+  nominalVoltage: z.coerce.number().positive(),
+  phaseType: z.enum(["1N", "3N"]),
+  neutralRegime: z.enum(["TT", "TN", "IT"]),
+  networkToTgdDistance: z.coerce.number().positive().optional(),
+  installMode: z.enum(["B1", "C"]),
+  insulationType: z.enum(["PVC", "PR"]),
+  generalProtectionRating: z.coerce.number().int().positive().optional(),
+  generalProtectionType: z.enum(["A", "AC", "F"]).optional(),
 });
 
 const updateInstallationSchema = z
@@ -27,6 +28,8 @@ const updateInstallationSchema = z
       .optional(),
     installMode: z.enum(["B1", "C"]).optional(),
     insulationType: z.enum(["PVC", "PR"]).optional(),
+    generalProtectionRating: z.coerce.number().int().positive().optional(),
+    generalProtectionType: z.enum(["A", "AC", "F"]).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Au moins un champ doit être fourni pour la mise à jour",

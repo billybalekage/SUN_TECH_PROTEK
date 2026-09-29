@@ -1,7 +1,21 @@
 const Joi = require("joi");
 
-const idParamSchema = Joi.string().uuid().required();
-const installationIdParamSchema = Joi.string().uuid().required();
+const idParamSchema = Joi.object({
+  id: Joi.string().uuid().required(),
+});
+const installationIdParamSchema = Joi.object({
+  installationId: Joi.string().uuid().required(),
+});
+
+const USAGE_LOCATIONS = [
+  "SALLE_DE_BAIN_VOLUME_0_1_2",
+  "EXTERIEUR",
+  "CUISINE_PRISES",
+  "PRISES_COURANT_GENERAL",
+  "CIRCUITS_SPECIALISES",
+  "ECLAIRAGE",
+  "AUTRES",
+];
 
 const createCircuitSchema = Joi.object({
   installationId: Joi.string().uuid().required().messages({
@@ -39,6 +53,10 @@ const createCircuitSchema = Joi.object({
   numberOfCircuits: Joi.number().integer().min(1).default(1).messages({
     "number.min": "Le nombre de circuits doit être au moins 1",
   }),
+
+  usageLocation: Joi.string()
+    .valid(...USAGE_LOCATIONS)
+    .optional(),
 });
 
 // Pour une mise à jour partielle : tous les champs deviennent optionnels,
@@ -87,4 +105,5 @@ module.exports = {
   createCircuitSchema,
   updateCircuitSchema,
   runCalculationSchema,
+  USAGE_LOCATIONS,
 };

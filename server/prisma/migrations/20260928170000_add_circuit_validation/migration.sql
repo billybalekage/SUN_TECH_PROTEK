@@ -1,0 +1,2 @@
+ALTER TABLE "Circuit"
+ADD COLUMN "validatedAt" TIMESTAMP(3);

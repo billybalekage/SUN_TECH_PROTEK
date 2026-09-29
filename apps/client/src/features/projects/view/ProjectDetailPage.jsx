@@ -1,12 +1,100 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Check, FileText, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  CircleCheck,
+  FileText,
+  LoaderCircle,
+  Eye,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { usageLocationLabels } from "@/features/installation/model";
+import {
+  useDeviceCoverageReports,
+  useDifferentialDevices,
+  useInstallationSelectivity,
+} from "@/features/installation/viewmodel";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { projectStatusLabels } from "../model";
 import { useProject } from "../viewmodel";
+import {
+  useCalculateCircuit,
+  useDeleteCircuit,
+  useUpdateCircuit,
+  useValidateCircuit,
+} from "@/features/calculation/viewmodel";
+
+function getErrorMessage(error, fallback) {
+  const validationDetails = error?.response?.data?.details;
+
+  return (
+    error?.response?.data?.error?.message ??
+    error?.response?.data?.message ??
+    (Array.isArray(validationDetails) ? validationDetails.join(" ") : null) ??
+    fallback
+  );
+}
 
 function ProjectDetailPage() {
   const { projectId } = useParams();
   const projectQuery = useProject(projectId);
+  const installationId = projectQuery.data?.installation?.id;
+  const differentialDevicesQuery = useDifferentialDevices(installationId);
+  const differentialDevices = differentialDevicesQuery.data ?? [];
+  const coverageQueries = useDeviceCoverageReports(differentialDevices);
+  const selectivityQuery = useInstallationSelectivity(installationId);
+  const calculateCircuit = useCalculateCircuit(projectId);
+  const validateCircuit = useValidateCircuit(projectId);
+  const updateCircuit = useUpdateCircuit(projectId);
+  const deleteCircuit = useDeleteCircuit(projectId);
+  const [editingCircuit, setEditingCircuit] = useState(null);
+  const [deletingCircuit, setDeletingCircuit] = useState(null);
+  const [viewingCircuit, setViewingCircuit] = useState(null);
+
+  function submitCircuitUpdate(event) {
+    event.preventDefault();
+    if (!editingCircuit) return;
+
+    const formData = new FormData(event.currentTarget);
+    updateCircuit.mutate(
+      {
+        circuitId: editingCircuit.id,
+        data: {
+          name: String(formData.get("name")).trim(),
+          circuitType: String(formData.get("circuitType")),
+          totalPower: Number(formData.get("totalPower")),
+          farthestLoadDistance: Number(formData.get("farthestLoadDistance")),
+          cosPhi: Number(formData.get("cosPhi")),
+          numberOfCircuits: Number(formData.get("numberOfCircuits")),
+          usageLocation: String(formData.get("usageLocation")),
+        },
+      },
+      { onSuccess: () => setEditingCircuit(null) },
+    );
+  }
 
   if (projectQuery.isPending) {
     return <PageMessage message="Chargement du projet..." />;
@@ -18,6 +106,12 @@ function ProjectDetailPage() {
   const project = projectQuery.data;
   const installation = project.installation;
   const circuits = installation?.circuits ?? [];
+  const calculatedCircuits = circuits.filter(
+    (circuit) => circuit.calculationResult,
+  );
+  const uncalculatedCircuits = circuits.filter(
+    (circuit) => !circuit.calculationResult,
+  );
   const uncompliantCount = circuits.filter(
     (circuit) => circuit.calculationResult?.isCompliant === false,
   ).length;
@@ -100,6 +194,14 @@ function ProjectDetailPage() {
                   label="Isolation"
                   value={installation.insulationType ?? "Non renseignée"}
                 />
+                <DataPoint
+                  label="Protection générale"
+                  value={
+                    installation.generalProtectionRating
+                      ? `${installation.generalProtectionRating} A · type ${installation.generalProtectionType ?? "non renseigné"}`
+                      : "Non renseignée"
+                  }
+                />
               </dl>
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">
@@ -113,9 +215,12 @@ function ProjectDetailPage() {
               <div>
                 <h2 className="font-semibold">Circuits</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {circuits.length} circuit{circuits.length > 1 ? "s" : ""}
+                  {calculatedCircuits.length} calculé
+                  {calculatedCircuits.length > 1 ? "s" : ""} ·{" "}
+                  {uncalculatedCircuits.length} non calculé
+                  {uncalculatedCircuits.length > 1 ? "s" : ""}
                   {uncompliantCount > 0
-                    ? ` · ${uncompliantCount} à vérifier`
+                    ? ` · ${uncompliantCount} non conforme(s)`
                     : ""}
                 </p>
               </div>
@@ -138,27 +243,575 @@ function ProjectDetailPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {circuits.map((circuit) => (
-                  <div
-                    key={circuit.id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-4"
-                  >
-                    <div>
-                      <p className="font-medium">{circuit.name}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {circuit.circuitType} · {circuit.totalPower} W ·{" "}
-                        {circuit.farthestLoadDistance} m
-                      </p>
-                    </div>
-                    <CircuitStatus result={circuit.calculationResult} />
-                  </div>
-                ))}
+                {calculatedCircuits.length > 0 && (
+                  <section aria-labelledby="calculated-circuits-heading">
+                    <h3
+                      id="calculated-circuits-heading"
+                      className="border-b border-border py-3 text-sm font-semibold"
+                    >
+                      Circuits calculés ({calculatedCircuits.length})
+                    </h3>
+                    {calculatedCircuits.map((circuit) => (
+                      <div
+                        key={circuit.id}
+                        className="flex flex-col gap-3 border-b border-border py-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="font-medium">{circuit.name}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {circuit.circuitType} · {circuit.totalPower} W ·{" "}
+                            {circuit.farthestLoadDistance} m
+                          </p>
+                          <CircuitProtectionDetails circuit={circuit} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CircuitStatus result={circuit.calculationResult} />
+                          {circuit.validatedAt ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-900">
+                              <CircleCheck
+                                aria-hidden="true"
+                                className="size-3.5"
+                              />
+                              Validé
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={validateCircuit.isPending}
+                              onClick={() => validateCircuit.mutate(circuit.id)}
+                            >
+                              {validateCircuit.isPending &&
+                              validateCircuit.variables === circuit.id ? (
+                                <LoaderCircle
+                                  aria-hidden="true"
+                                  className="animate-spin"
+                                />
+                              ) : (
+                                <CircleCheck aria-hidden="true" />
+                              )}
+                              Valider le calcul
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setViewingCircuit(circuit)}
+                          >
+                            <Eye aria-hidden="true" />
+                            Voir les résultats
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingCircuit(circuit)}
+                          >
+                            <Pencil aria-hidden="true" />
+                            Modifier
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeletingCircuit(circuit)}
+                          >
+                            <Trash2 aria-hidden="true" />
+                            Supprimer
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                )}
+                {uncalculatedCircuits.length > 0 && (
+                  <section aria-labelledby="uncalculated-circuits-heading">
+                    <h3
+                      id="uncalculated-circuits-heading"
+                      className="border-b border-border py-3 text-sm font-semibold"
+                    >
+                      Circuits non calculés ({uncalculatedCircuits.length})
+                    </h3>
+                    {uncalculatedCircuits.map((circuit) => (
+                      <div
+                        key={circuit.id}
+                        className="flex flex-col gap-3 border-b border-border py-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="font-medium">{circuit.name}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {circuit.circuitType} · {circuit.totalPower} W ·{" "}
+                            {circuit.farthestLoadDistance} m
+                          </p>
+                          <CircuitProtectionDetails circuit={circuit} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-muted px-2.5 py-1 text-xs">
+                            Non calculé
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setViewingCircuit(circuit)}
+                          >
+                            <Eye aria-hidden="true" />
+                            Détails
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={calculateCircuit.isPending}
+                            onClick={() => calculateCircuit.mutate(circuit.id)}
+                          >
+                            {calculateCircuit.isPending &&
+                            calculateCircuit.variables === circuit.id ? (
+                              <LoaderCircle
+                                aria-hidden="true"
+                                className="animate-spin"
+                              />
+                            ) : (
+                              <Play aria-hidden="true" />
+                            )}
+                            Lancer le calcul
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingCircuit(circuit)}
+                          >
+                            <Pencil aria-hidden="true" />
+                            Modifier
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setDeletingCircuit(circuit)}
+                          >
+                            <Trash2 aria-hidden="true" />
+                            Supprimer
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                )}
               </div>
+            )}
+            {(calculateCircuit.isError ||
+              validateCircuit.isError ||
+              updateCircuit.isError ||
+              deleteCircuit.isError) && (
+              <p className="mt-3 text-sm text-destructive" role="alert">
+                {getErrorMessage(
+                  calculateCircuit.error ??
+                    validateCircuit.error ??
+                    updateCircuit.error ??
+                    deleteCircuit.error,
+                  "Une action sur le circuit a échoué.",
+                )}
+              </p>
             )}
           </div>
         </section>
+        {installation && (
+          <section
+            className="mt-8 border-y border-border"
+            aria-labelledby="differential-devices-heading"
+          >
+            <div className="flex flex-col gap-3 border-b border-border py-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 id="differential-devices-heading" className="font-semibold">
+                  Dispositifs différentiels
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {differentialDevices.length} DDR · {circuits.length} circuits
+                </p>
+              </div>
+              {selectivityQuery.data && (
+                <p
+                  className={`text-sm font-medium ${selectivityQuery.data.isCompliant ? "text-emerald-800" : "text-amber-800"}`}
+                  role={selectivityQuery.data.isCompliant ? "status" : "alert"}
+                >
+                  Sélectivité générale :{" "}
+                  {selectivityQuery.data.isCompliant
+                    ? "conforme"
+                    : "à vérifier"}{" "}
+                  · hypothèse amont sélectif{" "}
+                  {selectivityQuery.data.assumption.upstreamSensitivityMa} mA
+                </p>
+              )}
+            </div>
+            {differentialDevicesQuery.isPending ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                Chargement des DDR...
+              </p>
+            ) : differentialDevicesQuery.isError ? (
+              <p className="py-4 text-sm text-destructive" role="alert">
+                {getErrorMessage(
+                  differentialDevicesQuery.error,
+                  "Impossible de charger les DDR.",
+                )}
+              </p>
+            ) : differentialDevices.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                Aucun DDR n’est encore configuré. Créez-en un lors de l’ajout
+                d’un circuit.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {differentialDevices.map((device, index) => {
+                  const coverageQuery = coverageQueries[index];
+                  return (
+                    <div
+                      key={device.id}
+                      className="grid gap-2 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {device.sensitivityMa} mA · type {device.type} ·{" "}
+                          {device.ratedCurrent} A
+                          {device.isSelectiveType ? " · sélectif" : ""}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {(device.circuits ?? []).length} circuit(s) protégé(s)
+                          {(device.circuits ?? []).length > 0 && ": "}
+                          {(device.circuits ?? [])
+                            .map((circuit) => circuit.name)
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                      </div>
+                      <div className="text-sm">
+                        {(device.circuits ?? []).length === 0 ? (
+                          <span className="text-muted-foreground">
+                            Aucun circuit affecté
+                          </span>
+                        ) : coverageQuery?.isPending ? (
+                          <span className="text-muted-foreground">
+                            Vérification...
+                          </span>
+                        ) : coverageQuery?.isError ? (
+                          <span className="text-destructive" role="alert">
+                            Vérification indisponible
+                          </span>
+                        ) : coverageQuery?.data ? (
+                          <span
+                            className={`font-medium ${coverageQuery.data.isCompliant ? "text-emerald-800" : "text-amber-800"}`}
+                            role={
+                              coverageQuery.data.isCompliant
+                                ? "status"
+                                : "alert"
+                            }
+                          >
+                            Couverture{" "}
+                            {coverageQuery.data.isCompliant
+                              ? "conforme"
+                              : "à vérifier"}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {selectivityQuery.isError && (
+              <p
+                className="border-t border-border py-3 text-sm text-destructive"
+                role="alert"
+              >
+                {getErrorMessage(
+                  selectivityQuery.error,
+                  "La sélectivité n’a pas pu être vérifiée.",
+                )}
+              </p>
+            )}
+          </section>
+        )}
       </div>
+      <Dialog
+        open={Boolean(viewingCircuit)}
+        onOpenChange={(open) => {
+          if (!open) setViewingCircuit(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {viewingCircuit?.calculationResult
+                ? "Résultats du calcul"
+                : "Détails du circuit"}
+            </DialogTitle>
+            <DialogDescription>{viewingCircuit?.name}</DialogDescription>
+          </DialogHeader>
+          {viewingCircuit && (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+              <DataPoint label="Type" value={viewingCircuit.circuitType} />
+              <DataPoint
+                label="Emplacement d’usage"
+                value={
+                  usageLocationLabels[viewingCircuit.usageLocation] ??
+                  "Non renseigné"
+                }
+              />
+              <DataPoint
+                label="DDR assigné"
+                value={
+                  viewingCircuit.differentialDevice
+                    ? `${viewingCircuit.differentialDevice.sensitivityMa} mA · type ${viewingCircuit.differentialDevice.type}`
+                    : "Aucun"
+                }
+              />
+              <DataPoint
+                label="Puissance totale"
+                value={`${viewingCircuit.totalPower} W`}
+              />
+              <DataPoint
+                label="Distance maximale"
+                value={`${viewingCircuit.farthestLoadDistance} m`}
+              />
+              <DataPoint
+                label="Facteur de puissance"
+                value={viewingCircuit.cosPhi}
+              />
+              <DataPoint
+                label="Circuits groupés"
+                value={viewingCircuit.numberOfCircuits}
+              />
+              {viewingCircuit.calculationResult && (
+                <>
+                  <DataPoint
+                    label="Courant d'emploi"
+                    value={`${viewingCircuit.calculationResult.ib} A`}
+                  />
+                  <DataPoint
+                    label="Chute de tension"
+                    value={`${viewingCircuit.calculationResult.deltaUPercent} %`}
+                  />
+                  <DataPoint
+                    label="Section retenue"
+                    value={`${viewingCircuit.calculationResult.sectionMm2} mm²`}
+                  />
+                  <DataPoint
+                    label="Calibre de protection"
+                    value={`${viewingCircuit.calculationResult.inCurrent} A`}
+                  />
+                  <DataPoint
+                    label="Intensité admissible"
+                    value={`${viewingCircuit.calculationResult.izCurrent} A`}
+                  />
+                  {viewingCircuit.calculationResult.icc != null && (
+                    <DataPoint
+                      label="Courant de court-circuit"
+                      value={`${viewingCircuit.calculationResult.icc} A`}
+                    />
+                  )}
+                  <DataPoint
+                    label="Conformité électrique"
+                    value={
+                      viewingCircuit.calculationResult.isCompliant
+                        ? "Conforme"
+                        : "Non conforme"
+                    }
+                  />
+                  <DataPoint
+                    label="Calcul effectué le"
+                    value={new Date(
+                      viewingCircuit.calculationResult.computedAt,
+                    ).toLocaleString("fr-FR")}
+                  />
+                </>
+              )}
+            </dl>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(editingCircuit)}
+        onOpenChange={(open) => {
+          if (!open && !updateCircuit.isPending) setEditingCircuit(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le circuit</DialogTitle>
+            <DialogDescription>
+              Modifiez les caractéristiques du circuit puis enregistrez.
+            </DialogDescription>
+          </DialogHeader>
+          {editingCircuit && (
+            <form
+              key={editingCircuit.id}
+              id="edit-circuit-form"
+              onSubmit={submitCircuitUpdate}
+              className="grid gap-4"
+            >
+              <FormInput
+                id="edit-circuit-name"
+                name="name"
+                label="Nom du circuit"
+                defaultValue={editingCircuit.name}
+                maxLength={100}
+                required
+              />
+              <label
+                htmlFor="edit-circuit-usage-location"
+                className="grid gap-1.5 text-sm font-medium"
+              >
+                Emplacement d’usage
+                <select
+                  id="edit-circuit-usage-location"
+                  name="usageLocation"
+                  defaultValue={editingCircuit.usageLocation ?? "AUTRES"}
+                  required
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                >
+                  {Object.entries(usageLocationLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label
+                htmlFor="edit-circuit-type"
+                className="grid gap-1.5 text-sm font-medium"
+              >
+                Type de circuit
+                <select
+                  id="edit-circuit-type"
+                  name="circuitType"
+                  defaultValue={editingCircuit.circuitType}
+                  required
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                >
+                  <option value="ECLAIRAGE">Éclairage</option>
+                  <option value="AUTRES_USAGES">Autres usages</option>
+                </select>
+              </label>
+              <FormInput
+                id="edit-circuit-power"
+                name="totalPower"
+                label="Puissance totale (W)"
+                type="number"
+                min="0.01"
+                step="any"
+                defaultValue={editingCircuit.totalPower}
+                required
+              />
+              <FormInput
+                id="edit-circuit-distance"
+                name="farthestLoadDistance"
+                label="Distance de la charge la plus éloignée (m)"
+                type="number"
+                min="0.01"
+                step="any"
+                defaultValue={editingCircuit.farthestLoadDistance}
+                required
+              />
+              <FormInput
+                id="edit-circuit-cos-phi"
+                name="cosPhi"
+                label="Facteur de puissance (cos φ)"
+                type="number"
+                min="0.01"
+                max="1"
+                step="0.01"
+                defaultValue={editingCircuit.cosPhi}
+                required
+              />
+              <FormInput
+                id="edit-circuit-count"
+                name="numberOfCircuits"
+                label="Circuits groupés"
+                type="number"
+                min="1"
+                step="1"
+                defaultValue={editingCircuit.numberOfCircuits}
+                required
+              />
+            </form>
+          )}
+          {updateCircuit.isError && (
+            <p className="text-sm text-destructive" role="alert">
+              {getErrorMessage(
+                updateCircuit.error,
+                "La modification a échoué.",
+              )}
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={updateCircuit.isPending}
+              onClick={() => setEditingCircuit(null)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              form="edit-circuit-form"
+              disabled={updateCircuit.isPending}
+            >
+              {updateCircuit.isPending ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={Boolean(deletingCircuit)}
+        onOpenChange={(open) => {
+          if (!open && !deleteCircuit.isPending) setDeletingCircuit(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce circuit ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingCircuit?.name} sera supprimé définitivement avec son
+              résultat de calcul.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteCircuit.isError && (
+            <p className="text-sm text-destructive" role="alert">
+              {getErrorMessage(deleteCircuit.error, "La suppression a échoué.")}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteCircuit.isPending}>
+              Annuler
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteCircuit.isPending}
+              onClick={() => {
+                if (!deletingCircuit) return;
+                deleteCircuit.mutate(deletingCircuit.id, {
+                  onSuccess: () => setDeletingCircuit(null),
+                });
+              }}
+            >
+              {deleteCircuit.isPending ? "Suppression..." : "Supprimer"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
+  );
+}
+
+function FormInput({ id, name, label, ...props }) {
+  return (
+    <label htmlFor={id} className="grid gap-1.5 text-sm font-medium">
+      {label}
+      <Input id={id} name={name} className="h-10" {...props} />
+    </label>
   );
 }
 
@@ -171,13 +824,24 @@ function DataPoint({ label, value }) {
   );
 }
 
+function CircuitProtectionDetails({ circuit }) {
+  const device = circuit.differentialDevice;
+
+  return (
+    <p className="mt-1 text-xs text-muted-foreground">
+      {usageLocationLabels[circuit.usageLocation] ??
+        "Emplacement non renseigné"}
+      {" · "}
+      {device
+        ? `DDR ${device.sensitivityMa} mA, type ${device.type}`
+        : "Aucun DDR assigné"}
+    </p>
+  );
+}
+
 function CircuitStatus({ result }) {
   if (!result) {
-    return (
-      <span className="rounded-md bg-muted px-2.5 py-1 text-xs">
-        À calculer
-      </span>
-    );
+    return null;
   }
 
   return result.isCompliant ? (
@@ -187,7 +851,8 @@ function CircuitStatus({ result }) {
     </span>
   ) : (
     <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-950">
-      <AlertTriangle aria-hidden="true" className="size-3.5" />À vérifier
+      <AlertTriangle aria-hidden="true" className="size-3.5" />
+      Non conforme
     </span>
   );
 }

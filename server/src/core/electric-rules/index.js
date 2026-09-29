@@ -18,6 +18,10 @@ const {
   selectProtectionRating,
 } = require("./formulas/protection-rating");
 const { checkCoordination } = require("./rules/coordination");
+const {
+  checkDifferentialSensitivity,
+  checkSelectivity,
+} = require("./rules/differential-protection");
 
 module.exports = {
   // Courant d'emploi
@@ -41,4 +45,6 @@ module.exports = {
 
   // Coordination des protections (Ib ≤ In ≤ Iz)
   checkCoordination,
+  checkDifferentialSensitivity,
+  checkSelectivity,
 };

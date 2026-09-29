@@ -9,7 +9,12 @@ async function findProjectById(id) {
     where: { id },
     include: {
       installation: {
-        include: { circuits: { include: { calculationResult: true } } },
+        include: {
+          differentialDevices: { include: { circuits: true } },
+          circuits: {
+            include: { calculationResult: true, differentialDevice: true },
+          },
+        },
       },
       owner: { select: { id: true, fullName: true, email: true } },
     },

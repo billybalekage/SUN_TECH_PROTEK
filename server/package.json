@@ -9,7 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "server": "nodemon server.js",
+    "server": "prisma generate && nodemon server.js",
     "seed:admin": "node prisma/seed-admin.js",
     "seed:core": "node prisma/seed-norms.js && node prisma/seed-ampacity.js && node prisma/seed-derating-factors.js"
   },
@@ -20,7 +20,6 @@
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "crypto": "^1.0.1",
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",

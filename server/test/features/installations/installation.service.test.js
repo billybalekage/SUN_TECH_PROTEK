@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import installationServiceModule from "../../../src/features/installations/installation.service.js";
 import {
+  createInstallationSchema,
   projectIdParamsSchema,
   updateInstallationSchema,
 } from "../../../src/features/installations/installation.validator.js";
@@ -28,6 +29,21 @@ describe("installation service", () => {
   });
 
   it("validates PATCH parameters and payloads with Zod", () => {
+    expect(
+      createInstallationSchema.safeParse({
+        projectId: "123e4567-e89b-12d3-a456-426614174000",
+        nominalVoltage: "230",
+        phaseType: "1N",
+        neutralRegime: "TT",
+        installMode: "B1",
+        insulationType: "PVC",
+        generalProtectionRating: "40",
+        generalProtectionType: "A",
+      }),
+    ).toMatchObject({
+      success: true,
+      data: { generalProtectionRating: 40, generalProtectionType: "A" },
+    });
     expect(
       projectIdParamsSchema.safeParse({
         projectId: "123e4567-e89b-12d3-a456-426614174000",

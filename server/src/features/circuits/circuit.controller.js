@@ -5,6 +5,8 @@ const {
   updateCircuit,
   deleteCircuit,
   runCircuitCalculation,
+  validateCircuitCalculation,
+  getCircuitValidationStatus,
 } = require("./circuit.service");
 const { asyncHandler } = require("../../common/utils/asyncHandler");
 
@@ -45,6 +47,16 @@ const runCalculation = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+const validateCalculation = asyncHandler(async (req, res) => {
+  const circuit = await validateCircuitCalculation(req.user.id, req.params.id);
+  res.json(circuit);
+});
+
+const getValidationStatus = asyncHandler(async (req, res) => {
+  const status = await getCircuitValidationStatus(req.user.id, req.params.id);
+  res.json(status);
+});
+
 module.exports = {
   create,
   getById,
@@ -52,4 +64,6 @@ module.exports = {
   update,
   remove,
   runCalculation,
+  validateCalculation,
+  getValidationStatus,
 };
