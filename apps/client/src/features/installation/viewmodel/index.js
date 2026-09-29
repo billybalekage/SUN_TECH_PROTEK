@@ -54,10 +54,7 @@ export function useCreateDifferentialDevice(projectId, installationId) {
   });
 }
 
-export function useAssignCircuitToDifferentialDevice(
-  projectId,
-  installationId,
-) {
+export function useAssignCircuitToDifferentialDevice(projectId) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -65,7 +62,7 @@ export function useAssignCircuitToDifferentialDevice(
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({
-          queryKey: [...differentialDevicesQueryKey, installationId],
+          queryKey: differentialDevicesQueryKey,
         }),
         queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
         queryClient.invalidateQueries({ queryKey: dashboardQueryKey }),

@@ -230,7 +230,10 @@ function ProjectsPage() {
                     size="icon"
                     aria-label={`Modifier le projet ${project.clientName}`}
                     title="Modifier le projet"
-                    onClick={() => setEditingProject(project)}
+                    onClick={() => {
+                      updateProject.reset();
+                      setEditingProject(project);
+                    }}
                   >
                     <Pencil aria-hidden="true" />
                   </Button>
@@ -241,7 +244,10 @@ function ProjectsPage() {
                     aria-label={`Supprimer le projet ${project.clientName}`}
                     title="Supprimer le projet"
                     className="text-destructive hover:text-destructive"
-                    onClick={() => setDeletingProject(project)}
+                    onClick={() => {
+                      deleteProject.reset();
+                      setDeletingProject(project);
+                    }}
                   >
                     <Trash2 aria-hidden="true" />
                   </Button>

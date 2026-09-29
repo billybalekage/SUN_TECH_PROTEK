@@ -8,6 +8,7 @@ import {
 } from "../model";
 import { projectsQueryKey } from "@/features/projects/viewmodel";
 import { dashboardQueryKey } from "@/features/dashboard/viewmodel";
+import { differentialDevicesQueryKey } from "@/features/installation/model";
 
 export function useCreateCircuit(projectId) {
   const queryClient = useQueryClient();
@@ -40,6 +41,7 @@ function invalidateCircuitQueries(queryClient, projectId) {
     }),
     queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
     queryClient.invalidateQueries({ queryKey: dashboardQueryKey }),
+    queryClient.invalidateQueries({ queryKey: differentialDevicesQueryKey }),
   ]);
 }
 

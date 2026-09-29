@@ -3,7 +3,10 @@ const express = require("express");
 const authController = require("./client.controller");
 const verifyToken = require("../../../common/middlewares/auth");
 const { validate } = require("../../../common/middlewares/validator");
-const { authLimiter } = require("../../../common/middlewares/reteLimiter");
+const {
+  authLimiter,
+  authMeLimiter,
+} = require("../../../common/middlewares/reteLimiter");
 const {
   signupSchema,
   loginPasswordSchema,
@@ -17,7 +20,13 @@ const {
 
 const client = express.Router();
 
-client.get("/auth/me", authLimiter, verifyToken, authController.getCurrentUser);
+client.get(
+  "/auth/me",
+  authMeLimiter,
+  verifyToken,
+  validate(emptyRequestSchema),
+  authController.getCurrentUser,
+);
 client.post(
   "/auth/logout",
   authLimiter,
