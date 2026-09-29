@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { projectStatusLabels } from "../model";
 import { useProject } from "../viewmodel";
+import { useGenerateProjectReport } from "@/features/report/viewmodel";
 import {
   useCalculateCircuit,
   useDeleteCircuit,
@@ -75,6 +76,7 @@ function ProjectDetailPage() {
   const validateCircuit = useValidateCircuit(projectId);
   const updateCircuit = useUpdateCircuit(projectId);
   const deleteCircuit = useDeleteCircuit(projectId);
+  const generateProjectReport = useGenerateProjectReport();
   const [editingCircuit, setEditingCircuit] = useState(null);
   const [deletingCircuit, setDeletingCircuit] = useState(null);
   const [viewingCircuit, setViewingCircuit] = useState(null);
@@ -164,11 +166,18 @@ function ProjectDetailPage() {
             <Button
               type="button"
               variant="outline"
-              disabled
-              title="La génération de rapports sera disponible ultérieurement"
+              disabled={generateProjectReport.isPending}
+              onClick={() => generateProjectReport.mutate(project.id)}
+              title="Télécharger le rapport PDF du projet"
             >
-              <FileText aria-hidden="true" />
-              Rapport bientôt disponible
+              {generateProjectReport.isPending ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : (
+                <FileText aria-hidden="true" />
+              )}
+              {generateProjectReport.isPending
+                ? "Génération..."
+                : "Télécharger le rapport"}
             </Button>
           </div>
         </header>
@@ -895,6 +904,14 @@ function ProjectDetailPage() {
               {getErrorMessage(
                 updateCircuit.error,
                 "La modification a échoué.",
+              )}
+            </p>
+          )}
+          {generateProjectReport.isError && (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {getErrorMessage(
+                generateProjectReport.error,
+                "La génération du rapport a échoué.",
               )}
             </p>
           )}

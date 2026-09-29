@@ -234,6 +234,48 @@ describe("runCircuitCalculation normative integration", () => {
     );
   });
 
+  it("uses the installation maximum Icc to verify linked protection capacity", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      circuitType: "ECLAIRAGE",
+      numberOfCircuits: 1,
+      totalPower: 2300,
+      cosPhi: 1,
+      farthestLoadDistance: 20,
+      circuitComponents: [
+        {
+          role: "PROTECTION",
+          component: {
+            breakingCapacity: 6,
+            technicalSpecs: { breakingCapacityUnit: "kA" },
+          },
+        },
+      ],
+      installation: {
+        id: "installation-1",
+        version: 7,
+        nominalVoltage: 230,
+        maximumIcc: "4000",
+        phaseType: "1N",
+        installMode: "B1",
+        insulationType: "PVC",
+        project: { ownerId: "user-1" },
+      },
+    });
+
+    const result = await circuitService.runCircuitCalculation(
+      "user-1",
+      "circuit-1",
+    );
+
+    expect(result.warnings).not.toContain(
+      "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",
+    );
+    expect(result.reasons).not.toContain(
+      "Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (4000A)",
+    );
+  });
+
   it("derives voltage-drop limits, ampacity section, and corrected Iz from norms", async () => {
     const result = await circuitService.runCircuitCalculation(
       "user-1",

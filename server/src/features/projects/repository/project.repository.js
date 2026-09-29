@@ -28,8 +28,24 @@ async function findProjectsByOwner(ownerId) {
   });
 }
 
-async function updateProject(id, data) {
-  return prisma.project.update({ where: { id }, data });
+async function updateProject(id, data, prismaClient = prisma) {
+  return prismaClient.$transaction(async (transaction) => {
+    const currentProject = await transaction.project.findUnique({
+      where: { id },
+      select: { status: true, validatedAt: true },
+    });
+    const updateData = { ...data };
+
+    if (data.status === "COMPLETED" && currentProject.status !== "COMPLETED") {
+      updateData.validatedAt = new Date();
+    } else if (data.status && data.status !== "COMPLETED") {
+      updateData.validatedAt = null;
+    } else if (data.status === "COMPLETED") {
+      updateData.validatedAt = currentProject.validatedAt;
+    }
+
+    return transaction.project.update({ where: { id }, data: updateData });
+  });
 }
 
 async function deleteProject(id) {

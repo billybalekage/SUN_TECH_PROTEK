@@ -41,6 +41,7 @@ function ProjectCreationPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const distance = String(formData.get("networkToTgdDistance") ?? "").trim();
+    const maximumIcc = String(formData.get("maximumIcc") ?? "").trim();
     createInstallation.mutate(
       {
         projectId: project.id,
@@ -48,6 +49,7 @@ function ProjectCreationPage() {
         phaseType: formData.get("phaseType"),
         neutralRegime: formData.get("neutralRegime"),
         ...(distance ? { networkToTgdDistance: Number(distance) } : {}),
+        ...(maximumIcc ? { maximumIcc: Number(maximumIcc) } : {}),
         installMode: formData.get("installMode"),
         insulationType: formData.get("insulationType"),
         generalProtectionType: formData.get("generalProtectionType"),
@@ -166,6 +168,19 @@ function ProjectCreationPage() {
               min="0.01"
               step="any"
             />
+            <FormInput
+              id="maximumIcc"
+              name="maximumIcc"
+              label="Icc,max réseau (A)"
+              type="number"
+              min="0.01"
+              step="any"
+            />
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              Valeur à obtenir auprès du gestionnaire du réseau ou de l’étude
+              électrique. Ne pas la confondre avec le pouvoir de coupure du
+              disjoncteur.
+            </p>
             <FormSelect
               id="phaseType"
               name="phaseType"

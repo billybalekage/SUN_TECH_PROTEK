@@ -176,6 +176,11 @@ async function runCircuitCalculation(
       "Ce circuit n'est rattaché à aucune installation",
     );
   }
+  const maximumIccForCheck =
+    maximumIcc ??
+    (installation.maximumIcc == null
+      ? undefined
+      : Number(installation.maximumIcc));
 
   // 1. Courant d'emploi
   const ib = calculateIb(
@@ -315,7 +320,7 @@ async function runCircuitCalculation(
   const protectionComponents = (circuit.circuitComponents ?? [])
     .filter(({ role }) => role === "PROTECTION")
     .map(({ component }) => component);
-  if (maximumIcc === undefined) {
+  if (maximumIccForCheck === undefined) {
     warnings.push(
       "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",
     );
@@ -325,11 +330,11 @@ async function runCircuitCalculation(
       const unit = component.technicalSpecs?.breakingCapacityUnit;
       const capacityAmps =
         unit === "A" ? capacity : unit === "kA" ? capacity * 1000 : null;
-      return capacityAmps !== null && capacityAmps >= maximumIcc;
+      return capacityAmps !== null && capacityAmps >= maximumIccForCheck;
     })
   ) {
     reasons.push(
-      `Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (${maximumIcc}A)`,
+      `Aucune protection liée avec une unité de pouvoir de coupure connue ne couvre Icc,max (${maximumIccForCheck}A)`,
     );
   }
   let differentialDevice = null;

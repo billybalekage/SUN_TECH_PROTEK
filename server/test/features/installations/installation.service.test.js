@@ -38,11 +38,22 @@ describe("installation service", () => {
         installMode: "B1",
         insulationType: "PVC",
         generalProtectionType: "A",
+        maximumIcc: "6000",
       }),
     ).toMatchObject({
       success: true,
-      data: { generalProtectionType: "A" },
+      data: { generalProtectionType: "A", maximumIcc: 6000 },
     });
+    expect(
+      createInstallationSchema.safeParse({
+        projectId: "123e4567-e89b-12d3-a456-426614174000",
+        nominalVoltage: 230,
+        phaseType: "1N",
+        neutralRegime: "TT",
+        installMode: "B1",
+        insulationType: "PVC",
+      }).success,
+    ).toBe(true);
     expect(
       createInstallationSchema.safeParse({
         projectId: "123e4567-e89b-12d3-a456-426614174000",
