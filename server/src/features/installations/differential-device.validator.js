@@ -11,7 +11,11 @@ const createDifferentialDeviceSchema = z.object({
     if (value === "false") return false;
     return value;
   }, z.boolean().default(false)),
-  ratedCurrent: z.coerce.number().int().positive(),
+  ratedCurrent: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() !== "" ? Number(value) : value,
+    z.number().int().positive(),
+  ),
 });
 
 const assignCircuitSchema = z.object({
