@@ -37,13 +37,23 @@ describe("installation service", () => {
         neutralRegime: "TT",
         installMode: "B1",
         insulationType: "PVC",
-        generalProtectionRating: "40",
         generalProtectionType: "A",
       }),
     ).toMatchObject({
       success: true,
-      data: { generalProtectionRating: 40, generalProtectionType: "A" },
+      data: { generalProtectionType: "A" },
     });
+    expect(
+      createInstallationSchema.safeParse({
+        projectId: "123e4567-e89b-12d3-a456-426614174000",
+        nominalVoltage: 230,
+        phaseType: "1N",
+        neutralRegime: "TT",
+        installMode: "B1",
+        insulationType: "PVC",
+        generalProtectionRating: 40,
+      }).success,
+    ).toBe(false);
     expect(
       projectIdParamsSchema.safeParse({
         projectId: "123e4567-e89b-12d3-a456-426614174000",
@@ -61,6 +71,10 @@ describe("installation service", () => {
     expect(updateInstallationSchema.safeParse({}).success).toBe(false);
     expect(
       updateInstallationSchema.safeParse({ phaseType: "2N" }).success,
+    ).toBe(false);
+    expect(
+      updateInstallationSchema.safeParse({ generalProtectionRating: 40 })
+        .success,
     ).toBe(false);
   });
 

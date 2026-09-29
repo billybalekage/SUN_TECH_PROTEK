@@ -1,6 +1,10 @@
 const {
+  calculateIb,
+  selectProtectionRating,
   checkDifferentialSensitivity,
   checkSelectivity,
+  getRequiredSensitivity,
+  getRequiredDifferentialType,
 } = require("../../core/electric-rules");
 const {
   NotFoundError,
@@ -17,6 +21,14 @@ function assertInstallationOwnership(installation, userId, installationId) {
   }
 }
 
+function isDeviceRated(device) {
+  return (
+    Number.isInteger(device.sensitivityMa) &&
+    typeof device.type === "string" &&
+    Number.isInteger(device.ratedCurrent)
+  );
+}
+
 async function listDevicesByInstallation(
   userId,
   installationId,
@@ -26,7 +38,6 @@ async function listDevicesByInstallation(
   assertInstallationOwnership(installation, userId, installationId);
   return repository.findDevicesByInstallation(installationId);
 }
-
 async function createDevice(userId, data, repository = getDefaultRepository()) {
   const installation = await repository.findInstallationById(
     data.installationId,
@@ -83,10 +94,79 @@ async function checkDeviceCoverage(
   }));
 
   return {
+    isRated: isDeviceRated(device),
     isCompliant:
-      perCircuit.length > 0 && perCircuit.every((result) => result.isCompliant),
+      isDeviceRated(device) &&
+      perCircuit.length > 0 &&
+      perCircuit.every((result) => result.isCompliant),
     perCircuit,
   };
+}
+
+async function computeDeviceRating(
+  userId,
+  differentialDeviceId,
+  repository = getDefaultRepository(),
+) {
+  const device = await repository.findDeviceById(differentialDeviceId);
+  if (!device || device.installation.project.ownerId !== userId) {
+    throw new NotFoundError(`DDR introuvable : ${differentialDeviceId}`);
+  }
+  if (device.circuits.length === 0) {
+    throw new BadRequestError(
+      "Aucun circuit assigné à ce DDR — impossible de le dimensionner",
+    );
+  }
+
+  const uncategorizedCircuits = device.circuits.filter(
+    (circuit) => !circuit.usageLocation,
+  );
+  if (uncategorizedCircuits.length > 0) {
+    throw new BadRequestError(
+      `${uncategorizedCircuits.length} circuit(s) sans emplacement d’usage — à classer avant calcul`,
+    );
+  }
+
+  let sensitivityMa;
+  try {
+    sensitivityMa = Math.min(
+      ...device.circuits.map((circuit) =>
+        getRequiredSensitivity(circuit.usageLocation),
+      ),
+    );
+  } catch (error) {
+    throw new BadRequestError(error.message);
+  }
+
+  const type = device.circuits.some(
+    (circuit) => getRequiredDifferentialType(circuit.circuitType) === "A",
+  )
+    ? "A"
+    : "AC";
+  const { nominalVoltage, phaseType } = device.installation;
+  const totalIb = device.circuits.reduce(
+    (total, circuit) =>
+      total +
+      calculateIb(
+        Number(circuit.totalPower),
+        Number(nominalVoltage),
+        Number(circuit.cosPhi),
+        phaseType,
+      ),
+    0,
+  );
+  const ratedCurrent = selectProtectionRating(totalIb);
+  if (ratedCurrent === null) {
+    throw new BadRequestError(
+      "Aucun calibre normalisé ne convient pour le courant total des circuits de ce DDR",
+    );
+  }
+
+  return repository.updateDeviceRating(differentialDeviceId, {
+    sensitivityMa,
+    type,
+    ratedCurrent,
+  });
 }
 
 /**
@@ -112,6 +192,7 @@ async function checkInstallationSelectivity(
   const perDevice = devices.map((device) => ({
     differentialDeviceId: device.id,
     sensitivityMa: device.sensitivityMa,
+    isRated: isDeviceRated(device),
     ...checkGeneralToDeviceSelectivity({
       generalProtectionRating: installation.generalProtectionRating,
       device,
@@ -119,7 +200,9 @@ async function checkInstallationSelectivity(
   }));
 
   return {
-    isCompliant: perDevice.every((result) => result.isCompliant),
+    isCompliant: perDevice.every(
+      (result) => result.isRated && result.isCompliant,
+    ),
     assumption: {
       upstreamSensitivityMa: 500,
       upstreamIsSelectiveType: true,
@@ -132,6 +215,7 @@ module.exports = {
   createDevice,
   listDevicesByInstallation,
   assignCircuit,
+  computeDeviceRating,
   checkDeviceCoverage,
   checkGeneralToDeviceSelectivity,
   checkInstallationSelectivity,

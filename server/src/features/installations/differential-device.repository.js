@@ -27,10 +27,32 @@ async function findDevicesByInstallation(installationId) {
 }
 
 async function assignCircuitToDevice(circuitId, differentialDeviceId) {
-  return prisma.circuit.update({
-    where: { id: circuitId },
-    data: { differentialDeviceId },
+  return prisma.$transaction(async (transaction) => {
+    const circuit = await transaction.circuit.findUnique({
+      where: { id: circuitId },
+      select: { differentialDeviceId: true },
+    });
+    const affectedDeviceIds = [
+      ...new Set(
+        [circuit?.differentialDeviceId, differentialDeviceId].filter(Boolean),
+      ),
+    ];
+
+    await transaction.differentialDevice.updateMany({
+      where: { id: { in: affectedDeviceIds } },
+      data: { sensitivityMa: null, type: null, ratedCurrent: null },
+    });
+
+    return transaction.circuit.update({
+      where: { id: circuitId },
+      data: { differentialDeviceId },
+      include: { differentialDevice: true },
+    });
   });
+}
+
+async function updateDeviceRating(id, data) {
+  return prisma.differentialDevice.update({ where: { id }, data });
 }
 
 async function findCircuitWithOwnership(circuitId) {
@@ -46,5 +68,6 @@ module.exports = {
   findDeviceById,
   findDevicesByInstallation,
   assignCircuitToDevice,
+  updateDeviceRating,
   findCircuitWithOwnership,
 };

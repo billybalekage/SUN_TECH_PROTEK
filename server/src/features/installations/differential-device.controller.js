@@ -22,6 +22,14 @@ const assignCircuit = asyncHandler(async (req, res) => {
   res.json(circuit);
 });
 
+const computeRating = asyncHandler(async (req, res) => {
+  const device = await coordinationService.computeDeviceRating(
+    req.user.id,
+    req.params.id,
+  );
+  res.json(device);
+});
+
 const getCoverage = asyncHandler(async (req, res) => {
   const result = await coordinationService.checkDeviceCoverage(
     req.user.id,
@@ -42,6 +50,7 @@ module.exports = {
   create,
   listByInstallation,
   assignCircuit,
+  computeRating,
   getCoverage,
   getInstallationSelectivity,
 };

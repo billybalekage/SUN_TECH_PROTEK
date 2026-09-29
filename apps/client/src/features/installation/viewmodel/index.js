@@ -8,6 +8,7 @@ import { dashboardQueryKey } from "@/features/dashboard/viewmodel";
 import { projectsQueryKey } from "@/features/projects/viewmodel";
 import {
   assignCircuitToDifferentialDevice,
+  computeDifferentialDeviceRating,
   createDifferentialDevice,
   differentialDevicesQueryKey,
   getDifferentialDeviceCoverage,
@@ -59,6 +60,27 @@ export function useAssignCircuitToDifferentialDevice(projectId) {
 
   return useMutation({
     mutationFn: assignCircuitToDifferentialDevice,
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: differentialDevicesQueryKey,
+        }),
+        queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: dashboardQueryKey }),
+        projectId
+          ? queryClient.invalidateQueries({
+              queryKey: [...projectsQueryKey, projectId],
+            })
+          : Promise.resolve(),
+      ]),
+  });
+}
+
+export function useComputeDifferentialDeviceRating(projectId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: computeDifferentialDeviceRating,
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({

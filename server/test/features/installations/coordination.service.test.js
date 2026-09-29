@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import coordinationService from "../../../src/features/installations/coordination.service.js";
+import { createDifferentialDeviceSchema } from "../../../src/features/installations/differential-device.validator.js";
 
 const repository = {
   findInstallationById: vi.fn(),
   findDeviceById: vi.fn(),
   findDevicesByInstallation: vi.fn(),
   createDevice: vi.fn(),
+  updateDeviceRating: vi.fn(),
   findCircuitWithOwnership: vi.fn(),
   assignCircuitToDevice: vi.fn(),
 };
@@ -21,6 +23,99 @@ beforeEach(() => {
 });
 
 describe("differential device coordination", () => {
+  it("accepts only configurable fields when creating a DDR", () => {
+    const result = createDifferentialDeviceSchema.safeParse({
+      installationId: "123e4567-e89b-12d3-a456-426614174000",
+      label: "Tableau étage",
+      isSelectiveType: true,
+      sensitivityMa: 30,
+      type: "A",
+      ratedCurrent: 40,
+    });
+
+    expect(result).toMatchObject({
+      success: true,
+      data: {
+        installationId: "123e4567-e89b-12d3-a456-426614174000",
+        label: "Tableau étage",
+        isSelectiveType: true,
+      },
+    });
+    expect(result.data).not.toHaveProperty("sensitivityMa");
+    expect(result.data).not.toHaveProperty("type");
+    expect(result.data).not.toHaveProperty("ratedCurrent");
+  });
+
+  it("computes the strictest sensitivity, required type, and total-current rating", async () => {
+    const device = {
+      id: "device-1",
+      circuits: [
+        {
+          id: "circuit-1",
+          usageLocation: "AUTRES",
+          circuitType: "ECLAIRAGE",
+          totalPower: 2300,
+          cosPhi: 1,
+        },
+        {
+          id: "circuit-2",
+          usageLocation: "SALLE_DE_BAIN_VOLUME_0_1_2",
+          circuitType: "PLAQUE_INDUCTION",
+          totalPower: 4600,
+          cosPhi: 1,
+        },
+      ],
+      installation: {
+        nominalVoltage: 230,
+        phaseType: "1N",
+        project: { ownerId: "user-1" },
+      },
+    };
+    const updatedDevice = {
+      ...device,
+      sensitivityMa: 30,
+      type: "A",
+      ratedCurrent: 32,
+    };
+    repository.findDeviceById.mockResolvedValue(device);
+    repository.updateDeviceRating.mockResolvedValue(updatedDevice);
+
+    await expect(
+      coordinationService.computeDeviceRating("user-1", "device-1", repository),
+    ).resolves.toBe(updatedDevice);
+    expect(repository.updateDeviceRating).toHaveBeenCalledWith("device-1", {
+      sensitivityMa: 30,
+      type: "A",
+      ratedCurrent: 32,
+    });
+  });
+
+  it("rejects dimensioning a DDR with no assigned circuits", async () => {
+    repository.findDeviceById.mockResolvedValue({
+      id: "device-1",
+      circuits: [],
+      installation: { project: { ownerId: "user-1" } },
+    });
+
+    await expect(
+      coordinationService.computeDeviceRating("user-1", "device-1", repository),
+    ).rejects.toThrow("Aucun circuit assigné");
+    expect(repository.updateDeviceRating).not.toHaveBeenCalled();
+  });
+
+  it("rejects dimensioning when a circuit has no usage location", async () => {
+    repository.findDeviceById.mockResolvedValue({
+      id: "device-1",
+      circuits: [{ id: "circuit-1", usageLocation: null }],
+      installation: { project: { ownerId: "user-1" } },
+    });
+
+    await expect(
+      coordinationService.computeDeviceRating("user-1", "device-1", repository),
+    ).rejects.toThrow("sans emplacement d’usage");
+    expect(repository.updateDeviceRating).not.toHaveBeenCalled();
+  });
+
   it("creates a device only for an installation owned by the user", async () => {
     const device = { id: "device-1" };
     repository.createDevice.mockResolvedValue(device);

@@ -129,10 +129,11 @@ model DifferentialDevice {
     id              String       @id @default(uuid())
     installationId  String
     installation    Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
-    sensitivityMa   Int
-    type            String
+    label           String?
+    sensitivityMa   Int?
+    type            String?
     isSelectiveType Boolean      @default(false)
-    ratedCurrent    Int
+    ratedCurrent    Int?
     createdAt       DateTime     @default(now())
 
     circuits Circuit[]
@@ -181,6 +182,8 @@ model CalculationResult {
     izCurrent     Decimal   @db.Decimal(10, 2)
     icc           Decimal?  @db.Decimal(10, 2)
     isCompliant   Boolean   @default(false)
+    reasons       Json      @default("[]")
+    warnings      Json      @default("[]")
     computedAt    DateTime  @default(now())
 }
 
@@ -198,6 +201,7 @@ model AuditLog {
 model Subscription {
     id        String    @id @default(uuid())
     userId    String
+    warnings  Json      @default("[]")
     user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
     plan      String
     status    String    @default("ACTIVE")

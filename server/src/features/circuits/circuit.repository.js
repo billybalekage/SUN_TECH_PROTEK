@@ -9,8 +9,35 @@ async function findInstallationById(id) {
 }
 
 //Crée un circuit rattaché à une installation.
-async function createCircuit(data) {
-  return prisma.circuit.create({ data });
+async function createCircuit(data, prismaClient = prisma) {
+  return prismaClient.$transaction(async (transaction) => {
+    let differentialDevice = await transaction.differentialDevice.findFirst({
+      where: { installationId: data.installationId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (!differentialDevice) {
+      differentialDevice = await transaction.differentialDevice.create({
+        data: {
+          installationId: data.installationId,
+          label: "Protection différentielle",
+        },
+      });
+    } else {
+      await transaction.differentialDevice.update({
+        where: { id: differentialDevice.id },
+        data: { sensitivityMa: null, type: null, ratedCurrent: null },
+      });
+    }
+
+    return transaction.circuit.create({
+      data: {
+        ...data,
+        differentialDeviceId: differentialDevice.id,
+      },
+      include: { differentialDevice: true },
+    });
+  });
 }
 
 //Récupère un circuit par son id, avec son résultat de calcul associ et les composants qui lui sont liés (protection + câble).
@@ -48,27 +75,57 @@ async function updateCircuit(id, data) {
   const requiresRecalculation = calculationFields.some((field) =>
     Object.hasOwn(data, field),
   );
+  const requiresDeviceRerating = [
+    "circuitType",
+    "totalPower",
+    "cosPhi",
+    "usageLocation",
+  ].some((field) => Object.hasOwn(data, field));
 
   if (!requiresRecalculation) {
     return prisma.circuit.update({ where: { id }, data });
   }
 
   return prisma.$transaction(async (transaction) => {
+    const currentCircuit = await transaction.circuit.findUnique({
+      where: { id },
+      select: { differentialDeviceId: true },
+    });
     await transaction.calculationResult.deleteMany({
       where: { circuitId: id },
     });
-    return transaction.circuit.update({
+    const updatedCircuit = await transaction.circuit.update({
       where: { id },
       data: { ...data, validatedAt: null },
       include: { calculationResult: true, differentialDevice: true },
     });
+    if (requiresDeviceRerating && currentCircuit?.differentialDeviceId) {
+      await transaction.differentialDevice.update({
+        where: { id: currentCircuit.differentialDeviceId },
+        data: { sensitivityMa: null, type: null, ratedCurrent: null },
+      });
+    }
+    return updatedCircuit;
   });
 }
 
 // Supprime un circuit (cascade sur calculationResult et circuitComponentsvia les contraintes onDelete: Cascade définies dans le schéma Prisma).
 
 async function deleteCircuit(id) {
-  return prisma.circuit.delete({ where: { id } });
+  return prisma.$transaction(async (transaction) => {
+    const circuit = await transaction.circuit.findUnique({
+      where: { id },
+      select: { differentialDeviceId: true },
+    });
+    const deletedCircuit = await transaction.circuit.delete({ where: { id } });
+    if (circuit?.differentialDeviceId) {
+      await transaction.differentialDevice.update({
+        where: { id: circuit.differentialDeviceId },
+        data: { sensitivityMa: null, type: null, ratedCurrent: null },
+      });
+    }
+    return deletedCircuit;
+  });
 }
 
 async function markCircuitValidated(id) {
@@ -87,11 +144,15 @@ async function saveCalculationResult(
   resultData,
   installationId,
   expectedVersion,
+  generalProtectionRating,
 ) {
   return prisma.$transaction(async (transaction) => {
     const versionUpdate = await transaction.installation.updateMany({
       where: { id: installationId, version: expectedVersion },
-      data: { version: { increment: 1 } },
+      data: {
+        version: { increment: 1 },
+        generalProtectionRating,
+      },
     });
     if (versionUpdate.count !== 1) {
       throw new ConflictError(
