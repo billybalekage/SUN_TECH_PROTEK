@@ -32,6 +32,12 @@ const authLimiter = createLimiter({
   message: "Too many authentication attempts, please try again later.",
 });
 
+const authMeLimiter = createLimiter({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: env.RATE_LIMIT_MAX_PRIVATE,
+  message: "Too many current-user requests, please try again later.",
+});
+
 const uploadLimiter = createLimiter({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max: env.RATE_LIMIT_MAX_UPLOAD,
@@ -47,6 +53,7 @@ const globalSlowDown = slowDown({
 
 module.exports = {
   authLimiter,
+  authMeLimiter,
   privateLimiter,
   publicLimiter,
   uploadLimiter,

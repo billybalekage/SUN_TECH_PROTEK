@@ -50,10 +50,7 @@ function CircuitCalculationPage() {
     projectId,
     installationId,
   );
-  const assignCircuit = useAssignCircuitToDifferentialDevice(
-    projectId,
-    installationId,
-  );
+  const assignCircuit = useAssignCircuitToDifferentialDevice(projectId);
   const [createdCircuit, setCreatedCircuit] = useState(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [assignmentDeviceId, setAssignmentDeviceId] = useState("");
