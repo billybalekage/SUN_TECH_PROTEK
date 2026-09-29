@@ -28,6 +28,7 @@ const updateInstallationSchema = z
       .union([z.coerce.number().positive(), z.null()])
       .optional(),
     maximumIcc: z.union([z.coerce.number().positive(), z.null()]).optional(),
+    maximumIcc: z.union([z.coerce.number().positive(), z.null()]).optional(),
     installMode: z.enum(["B1", "C"]).optional(),
     insulationType: z.enum(["PVC", "PR"]).optional(),
     generalProtectionRating: z.never().optional(),
