@@ -3,6 +3,7 @@ import {
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
   calculateMaxLengthForIccMin,
+  calculateRequiredIccForTripCurve,
 } from "../../../src/core/electric-rules/formulas/Icc.js";
 
 const cable = {
@@ -85,5 +86,17 @@ describe("calculateMaxLengthForIccMin", () => {
     expect(calculateIccMin({ ...inputs, length: maximumLength })).toBeCloseTo(
       inputs.minimumIcc,
     );
+  });
+});
+
+describe("calculateRequiredIccForTripCurve", () => {
+  it.each([
+    ["B", 5],
+    ["C", 10],
+    ["D", 20],
+  ])("uses the guaranteed multiplier for curve %s", (tripCurve, multiplier) => {
+    expect(
+      calculateRequiredIccForTripCurve({ ratedCurrent: 16, tripCurve }),
+    ).toBe(16 * multiplier);
   });
 });

@@ -105,6 +105,7 @@ async function updateCircuit(id, data) {
     "cosPhi",
     "numberOfCircuits",
     "usageLocation",
+    "breakerTripCurve",
   ];
   const requiresRecalculation = calculationFields.some((field) =>
     Object.hasOwn(data, field),

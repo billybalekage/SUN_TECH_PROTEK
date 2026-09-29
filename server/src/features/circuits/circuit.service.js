@@ -145,6 +145,7 @@ async function runCircuitCalculation(
     RESISTIVITY,
     calculateIccMin,
     calculateMaxLengthForIccMin,
+    calculateRequiredIccForTripCurve,
     checkCoordination,
     checkDifferentialSensitivity,
   } = electricRules;
@@ -283,16 +284,24 @@ async function runCircuitCalculation(
   });
   const reasons = [];
   const warnings = [];
-  if (minimumIcc === undefined) {
+  const requiredMinimumIcc =
+    minimumIcc ??
+    (circuit.breakerTripCurve
+      ? calculateRequiredIccForTripCurve({
+          ratedCurrent: inCurrent,
+          tripCurve: circuit.breakerTripCurve,
+        })
+      : undefined);
+  if (requiredMinimumIcc === undefined) {
     warnings.push(
-      "Icc,min requis non fourni : la longueur maximale n'est pas vérifiée",
+      "Courbe de déclenchement du disjoncteur non renseignée : la longueur maximale n'est pas vérifiée",
     );
   } else {
     const maximumLength = calculateMaxLengthForIccMin({
       voltage: installation.nominalVoltage,
       section,
       rho,
-      minimumIcc,
+      minimumIcc: requiredMinimumIcc,
       m,
       phaseType: installation.phaseType,
     });

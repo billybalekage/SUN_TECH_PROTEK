@@ -57,6 +57,8 @@ const createCircuitSchema = Joi.object({
   usageLocation: Joi.string()
     .valid(...USAGE_LOCATIONS)
     .optional(),
+
+  breakerTripCurve: Joi.string().valid("B", "C", "D").allow(null).optional(),
 });
 
 // Pour une mise à jour partielle : tous les champs deviennent optionnels,

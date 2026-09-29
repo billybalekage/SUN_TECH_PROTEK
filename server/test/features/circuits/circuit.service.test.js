@@ -28,6 +28,10 @@ const mockElectricRules = {
   selectFinalSection: vi.fn(),
   calculateIccMin: vi.fn(),
   calculateMaxLengthForIccMin: vi.fn(),
+  calculateRequiredIccForTripCurve: vi.fn(
+    ({ ratedCurrent, tripCurve }) =>
+      ratedCurrent * { B: 5, C: 10, D: 20 }[tripCurve],
+  ),
   checkCoordination: vi.fn(),
   checkDifferentialSensitivity: vi.fn(
     ({ usageLocation, chosenSensitivityMa }) => ({
@@ -79,6 +83,7 @@ beforeEach(() => {
   mockElectricRules.selectFinalSection.mockReturnValue(4);
   mockElectricRules.calculateDeltaUPercent.mockReturnValue(1.2);
   mockElectricRules.calculateIccMin.mockReturnValue(3000);
+  mockElectricRules.calculateMaxLengthForIccMin.mockReturnValue(25);
   mockElectricRules.checkCoordination.mockReturnValue({
     isCompliant: true,
     reasons: [],
@@ -164,7 +169,9 @@ describe("runCircuitCalculation normative integration", () => {
     expect(result.reasons).toEqual([]);
     expect(result.warnings).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("Icc,min requis non fourni"),
+        expect.stringContaining(
+          "Courbe de déclenchement du disjoncteur non renseignée",
+        ),
         expect.stringContaining("Icc,max réseau non fourni"),
       ]),
     );
@@ -184,6 +191,46 @@ describe("runCircuitCalculation normative integration", () => {
         type: "A",
         ratedCurrent: 32,
       },
+    );
+  });
+
+  it("derives the required minimum Icc from the breaker curve", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      breakerTripCurve: "C",
+      circuitType: "ECLAIRAGE",
+      numberOfCircuits: 1,
+      totalPower: 2300,
+      cosPhi: 1,
+      farthestLoadDistance: 20,
+      installation: {
+        id: "installation-1",
+        version: 7,
+        nominalVoltage: 230,
+        phaseType: "1N",
+        installMode: "B1",
+        insulationType: "PVC",
+        project: { ownerId: "user-1" },
+      },
+    });
+    mockElectricRules.calculateMaxLengthForIccMin.mockReturnValueOnce(15);
+
+    const result = await circuitService.runCircuitCalculation(
+      "user-1",
+      "circuit-1",
+    );
+
+    expect(
+      mockElectricRules.calculateRequiredIccForTripCurve,
+    ).toHaveBeenCalledWith({ ratedCurrent: 16, tripCurve: "C" });
+    expect(mockElectricRules.calculateMaxLengthForIccMin).toHaveBeenCalledWith(
+      expect.objectContaining({ minimumIcc: 160 }),
+    );
+    expect(result.reasons).toContain(
+      "La longueur du circuit (20m) dépasse Lmax (15.00m) pour Icc,min",
+    );
+    expect(result.warnings).not.toContain(
+      "Courbe de déclenchement du disjoncteur non renseignée : la longueur maximale n'est pas vérifiée",
     );
   });
 
@@ -232,7 +279,7 @@ describe("runCircuitCalculation normative integration", () => {
       isCompliant: false,
     });
     expect(result.warnings).toContain(
-      "Icc,min requis non fourni : la longueur maximale n'est pas vérifiée",
+      "Courbe de déclenchement du disjoncteur non renseignée : la longueur maximale n'est pas vérifiée",
     );
     expect(result.warnings).toContain(
       "Icc,max réseau non fourni : le pouvoir de coupure n'est pas vérifié",

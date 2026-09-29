@@ -75,8 +75,20 @@ function calculateMaxLengthForIccMin({
   throw new Error(`Type de phase inconnu : ${phaseType}`);
 }
 
+/** Returns the guaranteed instantaneous-trip threshold for an IEC B/C/D curve. */
+function calculateRequiredIccForTripCurve({ ratedCurrent, tripCurve }) {
+  validatePositive(ratedCurrent, "In");
+  const guaranteedMultipliers = { B: 5, C: 10, D: 20 };
+  const multiplier = guaranteedMultipliers[tripCurve];
+  if (!multiplier) {
+    throw new Error(`Courbe de déclenchement inconnue : ${tripCurve}`);
+  }
+  return ratedCurrent * multiplier;
+}
+
 module.exports = {
   CONVENTIONAL_COEFFICIENT,
   calculateIccMin,
   calculateMaxLengthForIccMin,
+  calculateRequiredIccForTripCurve,
 };

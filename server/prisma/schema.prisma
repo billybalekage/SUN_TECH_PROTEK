@@ -152,6 +152,7 @@ model Circuit {
     farthestLoadDistance Decimal             @db.Decimal(10, 2)
     cosPhi               Decimal             @default(0.8) @db.Decimal(4, 3)
     numberOfCircuits     Int                 @default(1)
+    breakerTripCurve     String?
     createdAt            DateTime            @default(now())
     validatedAt          DateTime?
 

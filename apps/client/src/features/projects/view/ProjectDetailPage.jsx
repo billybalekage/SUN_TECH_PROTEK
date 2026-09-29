@@ -95,6 +95,7 @@ function ProjectDetailPage() {
           cosPhi: Number(formData.get("cosPhi")),
           numberOfCircuits: Number(formData.get("numberOfCircuits")),
           usageLocation: String(formData.get("usageLocation")),
+          breakerTripCurve: String(formData.get("breakerTripCurve")) || null,
         },
       },
       { onSuccess: () => setEditingCircuit(null) },
@@ -632,6 +633,10 @@ function ProjectDetailPage() {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
               <DataPoint label="Type" value={viewingCircuit.circuitType} />
               <DataPoint
+                label="Courbe du disjoncteur"
+                value={viewingCircuit.breakerTripCurve ?? "Non renseignée"}
+              />
+              <DataPoint
                 label="Emplacement d’usage"
                 value={
                   usageLocationLabels[viewingCircuit.usageLocation] ??
@@ -823,6 +828,23 @@ function ProjectDetailPage() {
                       {label}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label
+                htmlFor="edit-circuit-breaker-curve"
+                className="grid gap-1.5 text-sm font-medium"
+              >
+                Courbe du disjoncteur
+                <select
+                  id="edit-circuit-breaker-curve"
+                  name="breakerTripCurve"
+                  defaultValue={editingCircuit.breakerTripCurve ?? ""}
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Non renseignée</option>
+                  <option value="B">B · 5 × In</option>
+                  <option value="C">C · 10 × In</option>
+                  <option value="D">D · 20 × In</option>
                 </select>
               </label>
               <FormInput
