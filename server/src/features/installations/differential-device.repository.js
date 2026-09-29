@@ -27,28 +27,58 @@ async function findDevicesByInstallation(installationId) {
   });
 }
 
-async function assignCircuitToDevice(circuitId, differentialDeviceId) {
-  return prisma.$transaction(async (transaction) => {
+async function assignCircuitToDevice(
+  circuitId,
+  differentialDeviceId,
+  prismaClient = prisma,
+) {
+  return prismaClient.$transaction(async (transaction) => {
     const circuit = await transaction.circuit.findUnique({
       where: { id: circuitId },
-      select: { differentialDeviceId: true },
+      select: { differentialDeviceId: true, installationId: true },
     });
+    const assignmentChanged =
+      circuit?.differentialDeviceId !== differentialDeviceId;
     const affectedDeviceIds = [
       ...new Set(
         [circuit?.differentialDeviceId, differentialDeviceId].filter(Boolean),
       ),
     ];
 
-    await transaction.differentialDevice.updateMany({
-      where: { id: { in: affectedDeviceIds } },
-      data: { sensitivityMa: null, type: null, ratedCurrent: null },
-    });
+    if (assignmentChanged) {
+      await transaction.installation.update({
+        where: { id: circuit.installationId },
+        data: { version: { increment: 1 } },
+      });
+      await transaction.differentialDevice.updateMany({
+        where: { id: { in: affectedDeviceIds } },
+        data: { sensitivityMa: null, type: null, ratedCurrent: null },
+      });
+    }
 
-    return transaction.circuit.update({
+    const updatedCircuit = await transaction.circuit.update({
       where: { id: circuitId },
       data: { differentialDeviceId },
       include: { differentialDevice: true },
     });
+    if (assignmentChanged) {
+      const affectedCircuits = await transaction.circuit.findMany({
+        where: { differentialDeviceId: { in: affectedDeviceIds } },
+        select: { id: true },
+      });
+      await transaction.calculationResult.deleteMany({
+        where: {
+          circuitId: {
+            in: affectedCircuits.map(({ id }) => id),
+          },
+        },
+      });
+      await transaction.circuit.updateMany({
+        where: { differentialDeviceId: { in: affectedDeviceIds } },
+        data: { validatedAt: null },
+      });
+    }
+    return updatedCircuit;
   });
 }
 
