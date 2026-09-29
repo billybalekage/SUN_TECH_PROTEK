@@ -1,4 +1,5 @@
 const prisma = require("../../config/database");
+const { ConflictError } = require("../../common/errors/AppErrors");
 
 async function findInstallationById(id) {
   return prisma.installation.findUnique({
@@ -51,8 +52,43 @@ async function assignCircuitToDevice(circuitId, differentialDeviceId) {
   });
 }
 
-async function updateDeviceRating(id, data) {
-  return prisma.differentialDevice.update({ where: { id }, data });
+async function saveDeviceRating(
+  id,
+  installationId,
+  expectedVersion,
+  data,
+  prismaClient = prisma,
+) {
+  return prismaClient.$transaction(async (transaction) => {
+    const versionUpdate = await transaction.installation.updateMany({
+      where: { id: installationId, version: expectedVersion },
+      data: { version: { increment: 1 } },
+    });
+    if (versionUpdate.count !== 1) {
+      throw new ConflictError(
+        "L'installation a été modifiée pendant le calcul; relancez le calcul",
+      );
+    }
+
+    const device = await transaction.differentialDevice.update({
+      where: { id },
+      data,
+    });
+    const circuits = await transaction.circuit.findMany({
+      where: { differentialDeviceId: id },
+      select: { id: true },
+    });
+    await transaction.calculationResult.deleteMany({
+      where: {
+        circuitId: { in: circuits.map(({ id: circuitId }) => circuitId) },
+      },
+    });
+    await transaction.circuit.updateMany({
+      where: { differentialDeviceId: id },
+      data: { validatedAt: null },
+    });
+    return device;
+  });
 }
 
 async function findCircuitWithOwnership(circuitId) {
@@ -68,6 +104,6 @@ module.exports = {
   findDeviceById,
   findDevicesByInstallation,
   assignCircuitToDevice,
-  updateDeviceRating,
+  saveDeviceRating,
   findCircuitWithOwnership,
 };

@@ -39,7 +39,7 @@ const mockElectricRules = {
 };
 
 const mockCoordinationService = {
-  computeDeviceRating: vi.fn(),
+  calculateDeviceRating: vi.fn(),
 };
 
 let circuitService;
@@ -83,11 +83,11 @@ beforeEach(() => {
     isCompliant: true,
     reasons: [],
   });
-  mockCoordinationService.computeDeviceRating.mockResolvedValue({
-    id: "device-1",
-    sensitivityMa: 30,
-    type: "A",
-    ratedCurrent: 32,
+  mockCoordinationService.calculateDeviceRating.mockResolvedValue({
+    deviceId: "device-1",
+    installationId: "installation-1",
+    expectedVersion: 7,
+    rating: { sensitivityMa: 30, type: "A", ratedCurrent: 32 },
   });
   mockNormService.getMaxDeltaUPercent.mockResolvedValue(3);
   mockNormService.getGroupingFactor.mockResolvedValue(0.8);
@@ -122,7 +122,7 @@ describe("runCircuitCalculation normative integration", () => {
       "circuit-1",
     );
 
-    expect(mockCoordinationService.computeDeviceRating).toHaveBeenCalledWith(
+    expect(mockCoordinationService.calculateDeviceRating).toHaveBeenCalledWith(
       "user-1",
       "device-1",
     );
@@ -178,6 +178,12 @@ describe("runCircuitCalculation normative integration", () => {
       "installation-1",
       7,
       16,
+      {
+        id: "device-1",
+        sensitivityMa: 30,
+        type: "A",
+        ratedCurrent: 32,
+      },
     );
   });
 
@@ -237,6 +243,7 @@ describe("runCircuitCalculation normative integration", () => {
       "installation-1",
       7,
       16,
+      null,
     );
   });
 
@@ -292,6 +299,7 @@ describe("runCircuitCalculation normative integration", () => {
       "installation-1",
       7,
       16,
+      null,
     );
   });
 

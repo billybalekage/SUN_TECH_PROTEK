@@ -103,7 +103,7 @@ async function checkDeviceCoverage(
   };
 }
 
-async function computeDeviceRating(
+async function calculateDeviceRating(
   userId,
   differentialDeviceId,
   repository = getDefaultRepository(),
@@ -162,11 +162,30 @@ async function computeDeviceRating(
     );
   }
 
-  return repository.updateDeviceRating(differentialDeviceId, {
-    sensitivityMa,
-    type,
-    ratedCurrent,
-  });
+  return {
+    deviceId: differentialDeviceId,
+    installationId: device.installationId ?? device.installation.id,
+    expectedVersion: device.installation.version,
+    rating: { sensitivityMa, type, ratedCurrent },
+  };
+}
+
+async function computeDeviceRating(
+  userId,
+  differentialDeviceId,
+  repository = getDefaultRepository(),
+) {
+  const calculated = await calculateDeviceRating(
+    userId,
+    differentialDeviceId,
+    repository,
+  );
+  return repository.saveDeviceRating(
+    calculated.deviceId,
+    calculated.installationId,
+    calculated.expectedVersion,
+    calculated.rating,
+  );
 }
 
 /**
@@ -215,6 +234,7 @@ module.exports = {
   createDevice,
   listDevicesByInstallation,
   assignCircuit,
+  calculateDeviceRating,
   computeDeviceRating,
   checkDeviceCoverage,
   checkGeneralToDeviceSelectivity,

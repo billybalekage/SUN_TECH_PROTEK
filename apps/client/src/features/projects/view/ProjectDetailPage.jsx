@@ -301,24 +301,6 @@ function ProjectDetailPage() {
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
-                            disabled={calculateCircuit.isPending}
-                            onClick={() => calculateCircuit.mutate(circuit.id)}
-                          >
-                            {calculateCircuit.isPending &&
-                            calculateCircuit.variables === circuit.id ? (
-                              <LoaderCircle
-                                aria-hidden="true"
-                                className="animate-spin"
-                              />
-                            ) : (
-                              <Play aria-hidden="true" />
-                            )}
-                            Recalculer
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
                             disabled={calculateCircuit.isPending}
                             onClick={() =>
                               calculateCircuit.mutate(circuit.id, {

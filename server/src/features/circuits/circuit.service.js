@@ -148,6 +148,9 @@ async function runCircuitCalculation(
     checkCoordination,
     checkDifferentialSensitivity,
   } = electricRules;
+  const coordinationService =
+    dependencies.coordinationService ??
+    require("../installations/coordination.service");
   const {
     izCurrent: providedIzCurrent,
     sectionByAmpacity,
@@ -321,15 +324,21 @@ async function runCircuitCalculation(
     );
   }
   let differentialDevice = null;
+  let differentialDeviceRating = null;
   if (circuit.differentialDeviceId) {
-    const coordinationService =
-      dependencies.coordinationService ??
-      require("../installations/coordination.service");
     try {
-      differentialDevice = await coordinationService.computeDeviceRating(
+      const calculatedDevice = await coordinationService.calculateDeviceRating(
         userId,
         circuit.differentialDeviceId,
       );
+      differentialDeviceRating = {
+        id: calculatedDevice.deviceId,
+        ...calculatedDevice.rating,
+      };
+      differentialDevice = {
+        id: calculatedDevice.deviceId,
+        ...calculatedDevice.rating,
+      };
       const differentialCheck = checkDifferentialSensitivity({
         usageLocation: circuit.usageLocation,
         chosenSensitivityMa: differentialDevice.sensitivityMa,
@@ -400,6 +409,7 @@ async function runCircuitCalculation(
     installation.id,
     installation.version,
     generalProtectionRating,
+    differentialDeviceRating,
   );
 
   return {

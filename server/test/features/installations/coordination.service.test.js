@@ -7,7 +7,7 @@ const repository = {
   findDeviceById: vi.fn(),
   findDevicesByInstallation: vi.fn(),
   createDevice: vi.fn(),
-  updateDeviceRating: vi.fn(),
+  saveDeviceRating: vi.fn(),
   findCircuitWithOwnership: vi.fn(),
   assignCircuitToDevice: vi.fn(),
 };
@@ -66,6 +66,8 @@ describe("differential device coordination", () => {
         },
       ],
       installation: {
+        id: "installation-1",
+        version: 4,
         nominalVoltage: 230,
         phaseType: "1N",
         project: { ownerId: "user-1" },
@@ -78,16 +80,17 @@ describe("differential device coordination", () => {
       ratedCurrent: 32,
     };
     repository.findDeviceById.mockResolvedValue(device);
-    repository.updateDeviceRating.mockResolvedValue(updatedDevice);
+    repository.saveDeviceRating.mockResolvedValue(updatedDevice);
 
     await expect(
       coordinationService.computeDeviceRating("user-1", "device-1", repository),
     ).resolves.toBe(updatedDevice);
-    expect(repository.updateDeviceRating).toHaveBeenCalledWith("device-1", {
-      sensitivityMa: 30,
-      type: "A",
-      ratedCurrent: 32,
-    });
+    expect(repository.saveDeviceRating).toHaveBeenCalledWith(
+      "device-1",
+      "installation-1",
+      4,
+      { sensitivityMa: 30, type: "A", ratedCurrent: 32 },
+    );
   });
 
   it("rejects dimensioning a DDR with no assigned circuits", async () => {
@@ -100,7 +103,7 @@ describe("differential device coordination", () => {
     await expect(
       coordinationService.computeDeviceRating("user-1", "device-1", repository),
     ).rejects.toThrow("Aucun circuit assigné");
-    expect(repository.updateDeviceRating).not.toHaveBeenCalled();
+    expect(repository.saveDeviceRating).not.toHaveBeenCalled();
   });
 
   it("rejects dimensioning when a circuit has no usage location", async () => {
@@ -113,7 +116,7 @@ describe("differential device coordination", () => {
     await expect(
       coordinationService.computeDeviceRating("user-1", "device-1", repository),
     ).rejects.toThrow("sans emplacement d’usage");
-    expect(repository.updateDeviceRating).not.toHaveBeenCalled();
+    expect(repository.saveDeviceRating).not.toHaveBeenCalled();
   });
 
   it("creates a device only for an installation owned by the user", async () => {
