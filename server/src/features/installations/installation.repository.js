@@ -10,14 +10,24 @@ async function findProjectById(projectId) {
 async function findInstallationByProjectId(projectId) {
   return prisma.installation.findUnique({
     where: { projectId },
-    include: { circuits: { include: { calculationResult: true } } },
+    include: {
+      differentialDevices: { include: { circuits: true } },
+      circuits: {
+        include: { calculationResult: true, differentialDevice: true },
+      },
+    },
   });
 }
 
 async function createInstallation(data) {
   return prisma.installation.create({
     data,
-    include: { circuits: { include: { calculationResult: true } } },
+    include: {
+      differentialDevices: { include: { circuits: true } },
+      circuits: {
+        include: { calculationResult: true, differentialDevice: true },
+      },
+    },
   });
 }
 
@@ -32,7 +42,12 @@ async function updateInstallation(projectId, data) {
     });
     return transaction.installation.findUnique({
       where: { id: installation.id },
-      include: { circuits: { include: { calculationResult: true } } },
+      include: {
+        differentialDevices: { include: { circuits: true } },
+        circuits: {
+          include: { calculationResult: true, differentialDevice: true },
+        },
+      },
     });
   });
 }

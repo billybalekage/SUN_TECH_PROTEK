@@ -3,7 +3,9 @@ import circuitServiceModule from "../../../src/features/circuits/circuit.service
 
 const mockCircuitRepository = {
   findCircuitById: vi.fn(),
+  updateCircuit: vi.fn(),
   saveCalculationResult: vi.fn(),
+  markCircuitValidated: vi.fn(),
 };
 
 const mockNormService = {
@@ -222,6 +224,73 @@ describe("runCircuitCalculation normative integration", () => {
     );
     expect(result.reasons).toContain(
       "Aucun dispositif différentiel n'est lié au circuit en régime TT",
+    );
+  });
+});
+
+describe("updateCircuit", () => {
+  it("updates a circuit after verifying project ownership", async () => {
+    const updatedCircuit = { id: "circuit-1", name: "Éclairage séjour" };
+    mockCircuitRepository.updateCircuit.mockResolvedValue(updatedCircuit);
+
+    await expect(
+      circuitService.updateCircuit("user-1", "circuit-1", {
+        name: "Éclairage séjour",
+      }),
+    ).resolves.toBe(updatedCircuit);
+    expect(mockCircuitRepository.updateCircuit).toHaveBeenCalledWith(
+      "circuit-1",
+      { name: "Éclairage séjour" },
+    );
+  });
+});
+
+describe("validateCircuitCalculation", () => {
+  it("returns validation status without changing the circuit", async () => {
+    const circuit = {
+      id: "circuit-1",
+      validatedAt: null,
+      calculationResult: { isCompliant: true },
+      installation: { project: { ownerId: "user-1" } },
+    };
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce(circuit);
+
+    await expect(
+      circuitService.getCircuitValidationStatus("user-1", "circuit-1"),
+    ).resolves.toEqual({
+      circuitId: "circuit-1",
+      canValidate: true,
+      isCompliant: true,
+      validatedAt: null,
+    });
+    expect(mockCircuitRepository.markCircuitValidated).not.toHaveBeenCalled();
+  });
+
+  it("refuses to validate a circuit without a calculation result", async () => {
+    await expect(
+      circuitService.validateCircuitCalculation("user-1", "circuit-1"),
+    ).rejects.toThrow(
+      "Le circuit doit être calculé avant de valider son résultat",
+    );
+    expect(mockCircuitRepository.markCircuitValidated).not.toHaveBeenCalled();
+  });
+
+  it("marks a calculated circuit as validated", async () => {
+    mockCircuitRepository.findCircuitById.mockResolvedValueOnce({
+      id: "circuit-1",
+      calculationResult: { isCompliant: true },
+      installation: { project: { ownerId: "user-1" } },
+    });
+    const validatedCircuit = { id: "circuit-1", validatedAt: new Date() };
+    mockCircuitRepository.markCircuitValidated.mockResolvedValueOnce(
+      validatedCircuit,
+    );
+
+    await expect(
+      circuitService.validateCircuitCalculation("user-1", "circuit-1"),
+    ).resolves.toBe(validatedCircuit);
+    expect(mockCircuitRepository.markCircuitValidated).toHaveBeenCalledWith(
+      "circuit-1",
     );
   });
 });

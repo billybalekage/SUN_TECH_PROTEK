@@ -1,10 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { calculateCircuit, createCircuit } from "../model";
+import {
+  calculateCircuit,
+  createCircuit,
+  deleteCircuit,
+  updateCircuit,
+  validateCircuit,
+} from "../model";
 import { projectsQueryKey } from "@/features/projects/viewmodel";
 import { dashboardQueryKey } from "@/features/dashboard/viewmodel";
 
-export function useCreateCircuit() {
-  return useMutation({ mutationFn: createCircuit });
+export function useCreateCircuit(projectId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createCircuit,
+    onSuccess: () => invalidateCircuitQueries(queryClient, projectId),
+  });
 }
 
 export function useCalculateCircuit(projectId) {
@@ -19,5 +30,42 @@ export function useCalculateCircuit(projectId) {
         }),
         queryClient.invalidateQueries({ queryKey: dashboardQueryKey }),
       ]),
+  });
+}
+
+function invalidateCircuitQueries(queryClient, projectId) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: [...projectsQueryKey, projectId],
+    }),
+    queryClient.invalidateQueries({ queryKey: projectsQueryKey }),
+    queryClient.invalidateQueries({ queryKey: dashboardQueryKey }),
+  ]);
+}
+
+export function useUpdateCircuit(projectId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateCircuit,
+    onSuccess: () => invalidateCircuitQueries(queryClient, projectId),
+  });
+}
+
+export function useDeleteCircuit(projectId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteCircuit,
+    onSuccess: () => invalidateCircuitQueries(queryClient, projectId),
+  });
+}
+
+export function useValidateCircuit(projectId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: validateCircuit,
+    onSuccess: () => invalidateCircuitQueries(queryClient, projectId),
   });
 }

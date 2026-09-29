@@ -68,6 +68,36 @@ async function deleteCircuit(
   return circuitRepository.deleteCircuit(circuitId);
 }
 
+async function validateCircuitCalculation(
+  userId,
+  circuitId,
+  circuitRepository = defaultCircuitRepository,
+) {
+  const circuit = await getCircuit(userId, circuitId, circuitRepository);
+  if (!circuit.calculationResult) {
+    throw new BadRequestError(
+      "Le circuit doit être calculé avant de valider son résultat",
+    );
+  }
+
+  return circuitRepository.markCircuitValidated(circuitId);
+}
+
+async function getCircuitValidationStatus(
+  userId,
+  circuitId,
+  circuitRepository = defaultCircuitRepository,
+) {
+  const circuit = await getCircuit(userId, circuitId, circuitRepository);
+
+  return {
+    circuitId: circuit.id,
+    canValidate: Boolean(circuit.calculationResult),
+    isCompliant: circuit.calculationResult?.isCompliant ?? null,
+    validatedAt: circuit.validatedAt ?? null,
+  };
+}
+
 /**
  * Dimensionne un circuit accessible à l'utilisateur et enregistre son résultat.
  * Déduit le calibre de protection, la section et l'intensité admissible des
@@ -356,6 +386,10 @@ function createCircuitService({
       updateCircuit(userId, circuitId, data, circuitRepository),
     deleteCircuit: (userId, circuitId) =>
       deleteCircuit(userId, circuitId, circuitRepository),
+    validateCircuitCalculation: (userId, circuitId) =>
+      validateCircuitCalculation(userId, circuitId, circuitRepository),
+    getCircuitValidationStatus: (userId, circuitId) =>
+      getCircuitValidationStatus(userId, circuitId, circuitRepository),
     runCircuitCalculation: (userId, circuitId, options) =>
       runCircuitCalculation(userId, circuitId, options, {
         circuitRepository,

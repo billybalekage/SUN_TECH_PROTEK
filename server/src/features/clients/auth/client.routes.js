@@ -17,15 +17,22 @@ const {
 
 const client = express.Router();
 
-client.get("/auth/me", verifyToken, authController.getCurrentUser);
+client.get("/auth/me", authLimiter, verifyToken, authController.getCurrentUser);
 client.post(
   "/auth/logout",
+  authLimiter,
   validate(emptyRequestSchema),
   authController.logout,
 );
-client.post("/auth/signup", validate(signupSchema), authController.signup);
+client.post(
+  "/auth/signup",
+  authLimiter,
+  validate(signupSchema),
+  authController.signup,
+);
 client.post(
   "/auth/login/password",
+  authLimiter,
   validate(loginPasswordSchema),
   authController.loginWithPassword,
 );
@@ -55,6 +62,7 @@ client.post(
 );
 client.post(
   "/auth/password/change",
+  authLimiter,
   verifyToken,
   validate(changePasswordSchema),
   authController.changePassword,

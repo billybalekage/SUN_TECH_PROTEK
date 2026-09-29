@@ -44,5 +44,15 @@ circuit.post(
   validate(runCalculationSchema),
   circuitController.runCalculation,
 );
+circuit.post(
+  "/:id/validate",
+  validate(idParamSchema, "params"),
+  circuitController.validateCalculation,
+);
+circuit.get(
+  "/:id/validate",
+  validate(idParamSchema, "params"),
+  circuitController.getValidationStatus,
+);
 
 module.exports = circuit;

@@ -14,6 +14,24 @@ const refreshSecret =
   process.env.JWT_REFRESH_SECRET ||
   (isProductionEnvironment ? "" : FALLBACK_JWT_REFRESH_SECRET);
 
+if (isProductionEnvironment) {
+  for (const [name, secret, fallback] of [
+    ["JWT_ACCESS_SECRET", accessSecret, FALLBACK_JWT_ACCESS_SECRET],
+    ["JWT_REFRESH_SECRET", refreshSecret, FALLBACK_JWT_REFRESH_SECRET],
+  ]) {
+    if (secret.trim().length < 32 || secret === fallback) {
+      throw new Error(
+        `${name} must be configured with a unique secret of at least 32 characters in production`,
+      );
+    }
+  }
+  if (accessSecret === refreshSecret) {
+    throw new Error(
+      "JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different in production",
+    );
+  }
+}
+
 if (!process.env.DB_URL && process.env.DATABASE_URL) {
   process.env.DB_URL = process.env.DATABASE_URL;
 }

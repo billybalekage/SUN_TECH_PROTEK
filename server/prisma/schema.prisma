@@ -112,26 +112,47 @@ model Installation {
     projectId            String   @unique
     project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
     nominalVoltage       Decimal  @db.Decimal(6, 2)
-    phaseType            String // "1N" ou "3N"
-    neutralRegime        String // "TT","TN","IT"
+    phaseType            String
+    neutralRegime        String
     networkToTgdDistance Decimal? @db.Decimal(10, 2)
     installMode          String?
     insulationType       String?
+
+    generalProtectionRating Int?
+    generalProtectionType   String?
+
+    differentialDevices DifferentialDevice[]
+    circuits            Circuit[]
+}
+
+model DifferentialDevice {
+    id              String       @id @default(uuid())
+    installationId  String
+    installation    Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+    sensitivityMa   Int
+    type            String
+    isSelectiveType Boolean      @default(false)
+    ratedCurrent    Int
+    createdAt       DateTime     @default(now())
 
     circuits Circuit[]
 }
 
 model Circuit {
-    id                   String       @id @default(uuid())
+    id                   String              @id @default(uuid())
     installationId       String
-    installation         Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
-    name                 String       @default("Circuit")
+    installation         Installation        @relation(fields: [installationId], references: [id], onDelete: Cascade)
+    differentialDeviceId String?
+    differentialDevice   DifferentialDevice? @relation(fields: [differentialDeviceId], references: [id])
+    usageLocation        String?
+    name                 String              @default("Circuit")
     circuitType          String
-    totalPower           Decimal      @db.Decimal(12, 2)
-    farthestLoadDistance Decimal      @db.Decimal(10, 2)
-    cosPhi               Decimal      @default(0.8) @db.Decimal(4, 3)
-    numberOfCircuits     Int          @default(1)
-    createdAt            DateTime     @default(now())
+    totalPower           Decimal             @db.Decimal(12, 2)
+    farthestLoadDistance Decimal             @db.Decimal(10, 2)
+    cosPhi               Decimal             @default(0.8) @db.Decimal(4, 3)
+    numberOfCircuits     Int                 @default(1)
+    createdAt            DateTime            @default(now())
+    validatedAt          DateTime?
 
     calculationResult CalculationResult?
     circuitComponents CircuitComponent[]

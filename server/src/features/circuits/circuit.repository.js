@@ -19,6 +19,7 @@ async function findCircuitById(id) {
     where: { id },
     include: {
       calculationResult: true,
+      differentialDevice: true,
       circuitComponents: { include: { component: true } },
       installation: { include: { project: true } },
     },
@@ -29,16 +30,38 @@ async function findCircuitById(id) {
 async function findCircuitsByInstallation(installationId) {
   return prisma.circuit.findMany({
     where: { installationId },
-    include: { calculationResult: true },
+    include: { calculationResult: true, differentialDevice: true },
     orderBy: { createdAt: "asc" },
   });
 }
 
 // Met à jour un circuit existant.
 async function updateCircuit(id, data) {
-  return prisma.circuit.update({
-    where: { id },
-    data,
+  const calculationFields = [
+    "circuitType",
+    "totalPower",
+    "farthestLoadDistance",
+    "cosPhi",
+    "numberOfCircuits",
+    "usageLocation",
+  ];
+  const requiresRecalculation = calculationFields.some((field) =>
+    Object.hasOwn(data, field),
+  );
+
+  if (!requiresRecalculation) {
+    return prisma.circuit.update({ where: { id }, data });
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    await transaction.calculationResult.deleteMany({
+      where: { circuitId: id },
+    });
+    return transaction.circuit.update({
+      where: { id },
+      data: { ...data, validatedAt: null },
+      include: { calculationResult: true, differentialDevice: true },
+    });
   });
 }
 
@@ -46,6 +69,13 @@ async function updateCircuit(id, data) {
 
 async function deleteCircuit(id) {
   return prisma.circuit.delete({ where: { id } });
+}
+
+async function markCircuitValidated(id) {
+  return prisma.circuit.update({
+    where: { id },
+    data: { validatedAt: new Date() },
+  });
 }
 
 /**
@@ -69,6 +99,11 @@ async function saveCalculationResult(
       );
     }
 
+    await transaction.circuit.update({
+      where: { id: circuitId },
+      data: { validatedAt: null },
+    });
+
     return transaction.calculationResult.upsert({
       where: { circuitId },
       create: { circuitId, ...resultData },
@@ -84,5 +119,6 @@ module.exports = {
   findCircuitsByInstallation,
   updateCircuit,
   deleteCircuit,
+  markCircuitValidated,
   saveCalculationResult,
 };
